@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Silicon Optimizer — run AI like you own the place</title>
-<meta name="description" content="A free Mac app that turns Apple Silicon into your own AI: chat, images, voice, video, 3D — no meter, no cloud, no account. Connect Claude or ChatGPT and stop spending subscription tokens on the heavy work.">
+<meta name="description" content="Free local AI you own: a Mac app for Apple Silicon and Silicon Node for a Windows PC with an NVIDIA card (Linux planned). Chat, images, voice, video, 3D — no meter, no cloud, no account.">
 <link rel="icon" href="/favicon.png" type="image/png">
 <meta name="theme-color" content="#0B0E14">
 <meta property="og:title" content="Silicon Optimizer">
-<meta property="og:description" content="Run AI like you own the place. Your Mac does the work — no meter, no cloud, no account. And your Claude or ChatGPT subscription stops burning tokens on the heavy stuff.">
+<meta property="og:description" content="Run AI like you own the place. The Mac app is the brain, Silicon Node turns your gaming PC into the muscle. No meter, no cloud, no account.">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -152,7 +152,7 @@ code, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
   border-bottom: 1px solid var(--rule);
 }
 .masthead {
-  display: flex; align-items: center; gap: 14px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
   padding-top: 14px; padding-bottom: 14px;
 }
 .masthead img { width: 32px; height: 32px; border-radius: 8px; box-shadow: 0 0 0 1px var(--rule-bright); }
@@ -182,6 +182,7 @@ code, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .chip.link:hover { background: rgba(77,224,192,.1); border-color: rgba(77,224,192,.6); }
 
 @media (max-width: 860px) { .nav, .chip.spec { display: none; } }
+@media (max-width: 600px) { .chip.repo { display: none; } }
 
 /* --- Hero -------------------------------------------------------------- */
 
@@ -234,6 +235,57 @@ code, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
   transition: color 160ms ease, border-color 160ms ease;
 }
 .secondary:hover { color: var(--wafer); border-color: var(--wafer-faint); }
+
+/* The second product needs a second weight. Teal fill stays the page's one
+   primary; the node reads as an outline next to it, and takes the indigo fill
+   only inside its own section, where it is the primary. */
+.download.ghost {
+  background: none; color: var(--wafer);
+  border: 1px solid var(--rule-bright);
+  box-shadow: none;
+}
+.download.ghost:hover {
+  border-color: rgba(110,139,200,.7);
+  box-shadow: 0 14px 34px -18px rgba(110,139,200,.65);
+}
+.download.node {
+  background: linear-gradient(180deg, #90A9DD, #6E8BC8);
+  color: #081020;
+  box-shadow: 0 1px 0 rgba(255,255,255,.22) inset, 0 10px 30px -14px rgba(110,139,200,.6);
+}
+.download.node:hover {
+  box-shadow: 0 1px 0 rgba(255,255,255,.28) inset, 0 16px 40px -14px rgba(110,139,200,.8);
+}
+
+/* --- Platform table ----------------------------------------------------- */
+
+.plats {
+  display: grid; margin: 30px 0 0; padding: 6px 22px; list-style: none;
+  background: linear-gradient(180deg, var(--substrate-2), var(--substrate));
+  border: 1px solid var(--rule); border-radius: 12px;
+}
+.plats li {
+  display: grid; grid-template-columns: 108px 1fr auto; gap: 6px 18px;
+  padding: 13px 0; border-bottom: 1px solid var(--rule); align-items: center;
+}
+.plats li:last-child { border-bottom: none; }
+.plats .p-os { font-family: var(--display); font-size: 15px; font-weight: 600; }
+.plats .p-what { color: var(--wafer-dim); font-size: 15px; }
+.pill {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.12em;
+  text-transform: uppercase; padding: 4px 10px; border-radius: 100px;
+  white-space: nowrap; justify-self: end;
+}
+.pill.now  { color: var(--measure); border: 1px solid rgba(77,224,192,.35); background: rgba(77,224,192,.07); }
+.pill.planned { color: var(--flag); border: 1px solid rgba(224,164,77,.35); background: rgba(224,164,77,.07); }
+@media (max-width: 560px) {
+  /* Explicit placement, or the full-width description would start its own row
+     and push the pill onto a third line. */
+  .plats li { grid-template-columns: 1fr auto; row-gap: 2px; }
+  .plats .p-os   { grid-column: 1; grid-row: 1; }
+  .plats .pill   { grid-column: 2; grid-row: 1; }
+  .plats .p-what { grid-column: 1 / -1; grid-row: 2; }
+}
 
 /* --- Sections ---------------------------------------------------------- */
 
@@ -327,7 +379,9 @@ pre {
   color: var(--wafer);
 }
 pre .c { color: var(--wafer-faint); }
-.steps { display: grid; gap: 22px; }
+/* min-width:0 keeps a long line inside a <pre> scrolling in its own box instead
+   of stretching the grid item and taking the whole page sideways on a phone. */
+.steps { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
 .step-label {
   font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.13em;
   text-transform: uppercase; color: var(--wafer-faint); margin-bottom: 10px;
@@ -369,23 +423,22 @@ footer {
     <nav class="nav" aria-label="Sections">
       <a href="#save">Save tokens</a>
       <a href="#features">Features</a>
+      <a href="#node">Silicon Node</a>
       <a href="#install">Install</a>
     </nav>
-    <span class="chip spec">v0.4.0</span>
-    <span class="chip spec">M1 Macs and newer</span>
-    <a class="chip link" href="https://github.com/OGZamasu/silicon-optimizer">Source</a>
+    <a class="chip link repo" href="https://github.com/OGZamasu/silicon-optimizer">Mac repo</a>
+    <a class="chip link repo" href="https://github.com/OGZamasu/silicon-node">Node repo</a>
   </div>
 </header>
 
 <div class="shell">
   <div class="hero">
-    <p class="eyebrow reveal">A free app for Apple Silicon</p>
+    <p class="eyebrow reveal">Free · Mac app · PC node</p>
     <h1 class="reveal" style="--d:.06s">Run AI like you <em>own the place.</em></h1>
     <p class="lede reveal" style="--d:.14s">
-      Because you do. Chat, images, voice, video, 3D — running on your Mac, not somebody's
-      cloud. No account. No meter. No "come back in three hours." And before you download a
-      single model, the app checks what your Mac can really handle — so you get the good
-      stuff, not the guesswork.
+      Because you do. Chat, images, voice, video, 3D — running on hardware you already own,
+      not somebody's cloud. No account. No meter. No "come back in three hours." The Mac app
+      is the brain. Got a gaming PC? Silicon Node makes it the muscle.
     </p>
 
     <div class="actions reveal" style="--d:.22s">
@@ -394,7 +447,14 @@ footer {
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download for Mac
         </span>
-        <span class="dl-sub">free · v0.4.0 · 57 MB · everything included · macOS 14+</span>
+        <span class="dl-sub">free · v0.4.0 · 57 MB · macOS 14+</span>
+      </a>
+      <a class="download ghost" href="https://github.com/OGZamasu/silicon-node/releases/latest">
+        <span class="dl-row">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download for Windows
+        </span>
+        <span class="dl-sub">Silicon Node · v0.3.0 · NVIDIA card</span>
       </a>
       <a class="secondary" href="https://github.com/OGZamasu/silicon-optimizer">or build it from source</a>
     </div>
@@ -556,7 +616,7 @@ footer {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="7" rx="2"/><rect x="2" y="14" width="20" height="7" rx="2"/><line x1="6" y1="6.5" x2="6.01" y2="6.5"/><line x1="6" y1="17.5" x2="6.01" y2="17.5"/></svg>
         </div>
         <h3>Bring your gaming PC into it</h3>
-        <p>Pair a Windows machine with an NVIDIA card and the heavy jobs go there — video, 3D, portrait animation — while your Mac stays free. You watch it work: stage, step, percent, time left. The node software is open source too: <a href="https://github.com/OGZamasu/silicon-node">silicon-node</a>.</p>
+        <p>Pair a Windows machine with an NVIDIA card and the heavy jobs go there — video, 3D, portrait animation — while your Mac stays free. You watch it work: stage, step, percent, time left. <a href="#node">Meet Silicon Node ↓</a></p>
       </div>
       <div class="cell wide">
         <div class="cell-icon" aria-hidden="true">
@@ -572,6 +632,69 @@ footer {
         <h3>Share it with a friend</h3>
         <p>Someone else on your Tailscale network running the app can join your swarm the way you'd pair headphones: you open an invite, they scan and knock, the same six-digit code shows on both screens, you let them in. Their pickers fill with your machines' models — no config files, no copying keys around.</p>
       </div>
+    </div>
+  </div>
+</section>
+
+<section id="node">
+  <div class="shell">
+    <div class="section-head reveal">
+      <p class="eyebrow">Silicon Node · the other half</p>
+      <h2>Your gaming PC has been playing small.</h2>
+      <p class="lede">
+        Silicon Node turns a Windows PC with an NVIDIA card into the render farm for every
+        machine in the house. Your Mac asks, your PC renders, the result lands back on your
+        desk. Same network, no cloud, still no bill.
+      </p>
+    </div>
+
+    <ul class="tools reveal">
+      <li><code>text → video</code><span>Two engines: one fast for trying ideas, one slow for the keeper</span></li>
+      <li><code>image → 3D</code><span>Clean, game-ready geometry — not a blobby scan</span></li>
+      <li><code>photo + audio</code><span>Make a picture talk, lip-sync included</span></li>
+      <li><code>webcam → photo</code><span>Act it out and the portrait copies you</span></li>
+      <li><code>chat</code><span>A 27B model with a huge memory, or any GGUF you drop in</span></li>
+    </ul>
+
+    <ul class="plats reveal">
+      <li>
+        <span class="p-os">macOS</span>
+        <span class="p-what">The app — Apple Silicon, M1 and newer</span>
+        <span class="pill now">v0.4.0</span>
+      </li>
+      <li>
+        <span class="p-os">Windows</span>
+        <span class="p-what">The node — NVIDIA card, Windows 10 or 11</span>
+        <span class="pill now">v0.3.0</span>
+      </li>
+      <li>
+        <span class="p-os">Linux</span>
+        <span class="p-what">The node, native — on the list, not started yet</span>
+        <span class="pill planned">planned</span>
+      </li>
+    </ul>
+
+    <div class="actions reveal">
+      <a class="download node" href="https://github.com/OGZamasu/silicon-node/releases/latest">
+        <span class="dl-row">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Silicon Node
+        </span>
+        <span class="dl-sub">free · v0.3.0 · Windows 10/11 · NVIDIA</span>
+      </a>
+      <a class="secondary" href="https://github.com/OGZamasu/silicon-node">silicon-node on GitHub</a>
+    </div>
+
+    <div class="notes reveal" style="margin-top:26px">
+      <p>
+        A 24 GB card (3090 / 4090 class) runs everything. Smaller card, fewer abilities —
+        each one is optional and you can add them later. The download is just the service;
+        the models come after, one ability at a time, with the size shown before each.
+      </p>
+      <p>
+        Joining is a six-digit code in the Mac app's Swarm tab. One rule before you point it
+        at your network: <a href="https://github.com/OGZamasu/silicon-node/blob/main/SECURITY.md">set the swarm token</a>.
+      </p>
     </div>
   </div>
 </section>
@@ -609,11 +732,13 @@ python3 -m venv ~/.silicon-mlx
 ~/.silicon-mlx/bin/pip install mflux</pre>
       </div>
       <div class="reveal">
-        <p class="step-label">5 · Optional: add a gaming PC</p>
-<pre><span class="c"># Got a Windows machine with an NVIDIA card? Make it your render farm —</span>
-<span class="c"># video, 3D and portrait jobs go there while your Mac stays free:</span>
+        <p class="step-label">5 · On your PC: Silicon Node</p>
+<pre><span class="c"># Windows 10/11 with an NVIDIA card. This is the service itself; the</span>
+<span class="c"># setup guide then adds models one ability at a time.</span>
 scoop bucket add silicon https://github.com/OGZamasu/silicon-node
-scoop install silicon-node</pre>
+scoop install silicon-node
+
+<span class="c"># No scoop? Take the zip from the releases page and run install.ps1.</span></pre>
       </div>
       <div class="reveal">
         <p class="step-label">6 · Optional: connect Claude or ChatGPT</p>
@@ -639,7 +764,7 @@ codex mcp add silicon-optimizer -- \
 
 <div class="shell">
   <footer>
-    <span><a href="https://github.com/OGZamasu/silicon-optimizer">github.com/OGZamasu/silicon-optimizer</a> · MIT · built by one person and a lot of silicon</span>
+    <span><a href="https://github.com/OGZamasu/silicon-optimizer">silicon-optimizer</a> · <a href="https://github.com/OGZamasu/silicon-node">silicon-node</a> · MIT · built by one person and a lot of silicon</span>
     <span class="spacer" style="flex:1"></span>
     <span>Models carry their own licences</span>
   </footer>
