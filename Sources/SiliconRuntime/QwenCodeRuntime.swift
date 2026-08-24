@@ -24,6 +24,17 @@ public actor QwenCodeRuntime {
     private var process: ServerProcess?
     public private(set) var processIdentifier: Int32?
 
+    /// The bearer token this launch's daemon was started with.
+    ///
+    /// Loopback is auth-free for ordinary routes, so it is tempting to omit one — but the
+    /// daemon strict-gates every workspace mutation behind auth being *configured*, and
+    /// answers `POST /workspaces` with `token_required` when it is not. Registering a
+    /// second workspace from the Web Shell was therefore impossible, whatever the user did.
+    ///
+    /// Fresh per launch, and never written to the settings file: it lives as long as the
+    /// process it authorises.
+    private var token: String?
+
     public init() {}
 
     // MARK: - Locations
@@ -151,6 +162,8 @@ public actor QwenCodeRuntime {
         let npx = node.deletingLastPathComponent().appendingPathComponent("npx")
         let process = ServerProcess()
         self.process = process
+        let token = Self.freshToken()
+        self.token = token
         do {
             let path = "\(node.deletingLastPathComponent().path):/usr/bin:/bin:/usr/sbin:/sbin"
             try await process.start(
@@ -165,6 +178,9 @@ public actor QwenCodeRuntime {
                     "OPENAI_API_KEY": "local-gateway-needs-no-key",
                     "SILICON_GATEWAY_KEY": "local-gateway-needs-no-key",
                     "OPENAI_MODEL": defaultModel,
+                    // Through the environment rather than `--token`, which would put the
+                    // secret in the process list for every user on the machine to read.
+                    "QWEN_SERVER_TOKEN": token,
                 ],
                 currentDirectory: workspace
             )
@@ -176,7 +192,7 @@ public actor QwenCodeRuntime {
 
         let url = URL(string: "http://127.0.0.1:\(webPort)")!
         if await waitUntilServing(url: url, process: process) {
-            onState(.ready(endpoint: url))
+            onState(.ready(endpoint: Self.webShellURL(port: webPort, token: token)))
         } else {
             let log = await process.log
             await stop()
@@ -185,6 +201,30 @@ public actor QwenCodeRuntime {
                 + log.split(separator: "\n").suffix(6).joined(separator: "\n")
             ))
         }
+    }
+
+    /// A fresh bearer token. 128 bits of urandom via `UUID`, which is what the daemon's own
+    /// documentation suggests for a BYO token, and more than enough for a loopback secret
+    /// that dies with the process.
+    static func freshToken() -> String {
+        UUID().uuidString.replacingOccurrences(of: "-", with: "")
+    }
+
+    /// The Web Shell's URL, carrying the token the way the daemon's own `--open` launcher
+    /// does: in the *fragment*, not the query.
+    ///
+    /// The client reads `token` from either, but a fragment is never sent to the server, so
+    /// it cannot land in the daemon's request log — which prints every route it serves. The
+    /// Web Shell puts it straight into `localStorage` and sends it as `Authorization:
+    /// Bearer` on every call after that.
+    static func webShellURL(port: Int, token: String) -> URL {
+        var components = URLComponents()
+        components.scheme = "http"
+        components.host = "127.0.0.1"
+        components.port = port
+        components.path = "/"
+        components.fragment = "token=\(token)"
+        return components.url!
     }
 
     /// Polls the Web Shell until it answers; the generous deadline is for npx's
@@ -211,5 +251,7 @@ public actor QwenCodeRuntime {
         await process.terminate()
         self.process = nil
         processIdentifier = nil
+        // The token authorised that daemon and nothing else; the next launch mints its own.
+        token = nil
     }
 }
