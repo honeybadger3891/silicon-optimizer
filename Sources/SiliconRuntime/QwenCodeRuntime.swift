@@ -24,17 +24,6 @@ public actor QwenCodeRuntime {
     private var process: ServerProcess?
     public private(set) var processIdentifier: Int32?
 
-    /// The bearer token this launch's daemon was started with.
-    ///
-    /// Loopback is auth-free for ordinary routes, so it is tempting to omit one — but the
-    /// daemon strict-gates every workspace mutation behind auth being *configured*, and
-    /// answers `POST /workspaces` with `token_required` when it is not. Registering a
-    /// second workspace from the Web Shell was therefore impossible, whatever the user did.
-    ///
-    /// Fresh per launch, and never written to the settings file: it lives as long as the
-    /// process it authorises.
-    private var token: String?
-
     public init() {}
 
     // MARK: - Locations
@@ -162,8 +151,13 @@ public actor QwenCodeRuntime {
         let npx = node.deletingLastPathComponent().appendingPathComponent("npx")
         let process = ServerProcess()
         self.process = process
+        // Loopback is auth-free for ordinary routes, so it is tempting to omit a token —
+        // but the daemon strict-gates every workspace mutation behind auth being
+        // *configured*, and answers `POST /workspaces` with `token_required` when it is
+        // not. Registering a second workspace from the Web Shell was therefore impossible,
+        // whatever the user did. Fresh per launch, never written to the generated settings:
+        // it lives exactly as long as the process it authorises.
         let token = Self.freshToken()
-        self.token = token
         do {
             let path = "\(node.deletingLastPathComponent().path):/usr/bin:/bin:/usr/sbin:/sbin"
             try await process.start(
@@ -203,9 +197,9 @@ public actor QwenCodeRuntime {
         }
     }
 
-    /// A fresh bearer token. 128 bits of urandom via `UUID`, which is what the daemon's own
-    /// documentation suggests for a BYO token, and more than enough for a loopback secret
-    /// that dies with the process.
+    /// A fresh bearer token: the 122 random bits of a v4 `UUID`, hex, no dashes. Well past
+    /// what a loopback secret that dies with its process needs, and the shape the daemon's
+    /// own documentation suggests for a BYO token.
     static func freshToken() -> String {
         UUID().uuidString.replacingOccurrences(of: "-", with: "")
     }
@@ -215,8 +209,8 @@ public actor QwenCodeRuntime {
     ///
     /// The client reads `token` from either, but a fragment is never sent to the server, so
     /// it cannot land in the daemon's request log — which prints every route it serves. The
-    /// Web Shell puts it straight into `localStorage` and sends it as `Authorization:
-    /// Bearer` on every call after that.
+    /// Web Shell keeps it in `sessionStorage` under `qwen-daemon-token` and sends it as
+    /// `Authorization: Bearer` on every call after that.
     static func webShellURL(port: Int, token: String) -> URL {
         var components = URLComponents()
         components.scheme = "http"
@@ -251,7 +245,5 @@ public actor QwenCodeRuntime {
         await process.terminate()
         self.process = nil
         processIdentifier = nil
-        // The token authorised that daemon and nothing else; the next launch mints its own.
-        token = nil
     }
 }
