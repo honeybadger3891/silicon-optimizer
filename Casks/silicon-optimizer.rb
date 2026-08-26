@@ -1,15 +1,20 @@
 cask "silicon-optimizer" do
-  version "0.2.1"
-  sha256 :no_check
+  version "0.5.0"
+  sha256 "8a7e15d365b10b92df80fe8e553ca321926dc535a3fa8eb483685b85dc084189"
 
   url "https://github.com/OGZamasu/silicon-optimizer/releases/download/v#{version}/Silicon.Optimizer.dmg"
   name "Silicon Optimizer"
-  desc "Menu bar app that plans memory for local LLMs on Apple Silicon"
+  desc "Local AI workbench for Apple Silicon: chat agents, images, voice, video, 3D, and a multi-machine swarm"
   homepage "https://optimize.zamasu.dev"
+
+  livecheck do
+    url "https://optimize.zamasu.dev/appcast.xml"
+    strategy :sparkle, &:short_version
+  end
 
   # Sparkle handles updates in-app, so Homebrew should not fight it over versions.
   auto_updates true
-  depends_on macos: ">= :sonoma"
+  depends_on macos: :sonoma
   depends_on arch: :arm64
 
   app "Silicon Optimizer.app"
@@ -21,14 +26,12 @@ cask "silicon-optimizer" do
   ]
 
   caveats <<~EOS
-    Silicon Optimizer is signed but not notarized, so macOS may refuse the first launch.
-    If that happens:
-
+    Silicon Optimizer is signed but not notarized, so macOS may refuse the
+    first launch. If that happens:
       xattr -d com.apple.quarantine "/Applications/Silicon Optimizer.app"
 
-    Language models and the harness chat work out of the box — llama.cpp and Node.js ship
-    inside the app. Image generation is the one optional extra:
-
-      python3 -m venv ~/.silicon-mlx && ~/.silicon-mlx/bin/pip install mflux
+    Chat and language models work out of the box — the llama.cpp engine and
+    Node.js runtime ship inside the app. Optional extras (image generation,
+    a Windows render node) are described at https://optimize.zamasu.dev
   EOS
 end

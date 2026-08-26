@@ -6,15 +6,15 @@
     <description>Updates for Silicon Optimizer</description>
     <language>en</language>
     <item>
-      <title>Version 0.4.0</title>
-      <pubDate>Fri, 21 Aug 2026 15:41:51 +0000</pubDate>
-      <sparkle:version>132</sparkle:version>
-      <sparkle:shortVersionString>0.4.0</sparkle:shortVersionString>
+      <title>Version 0.5.0</title>
+      <pubDate>Wed, 26 Aug 2026 14:12:07 +0000</pubDate>
+      <sparkle:version>157</sparkle:version>
+      <sparkle:shortVersionString>0.5.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <description><![CDATA[Pi joins the engine roster — earendil's coding agent, running on your models with the app's whole toolbox bridged in. Settings grows Your other AIs: one-click Connect buttons that wire Claude Desktop, Claude Code and Codex to your local models, so your subscription stops burning tokens on the heavy work. Swarm invites now hand each person their own revocable key instead of the shared one.]]></description>
-      <enclosure url="https://github.com/OGZamasu/silicon-optimizer/releases/download/v0.4.0/Silicon.Optimizer.dmg"
+      <description><![CDATA[Models you don't own, if you want them: a Cloud tab for bring-your-own-key providers — GMI Cloud (MiniMax M3 and M2.7, plus speech and music), OpenRouter, and NVIDIA's free developer tier. Off until you add a key, and never picked for you: your agents still fall back to a local model unless you choose otherwise. OpenMontage, the open-source agentic video studio, gets a Set up button in Settings — one click installs it to ~/OpenMontage and links this app in as a $0 provider for images, video and 3D, so its productions render on your Mac and your swarm. Qwen Code's daemon now starts with a bearer token, so adding a workspace works. Silicon Node gets its own download and section on the site.]]></description>
+      <enclosure url="https://github.com/OGZamasu/silicon-optimizer/releases/download/v0.5.0/Silicon.Optimizer.dmg"
                  type="application/octet-stream"
-                 sparkle:edSignature="fzsw5yhI2MBW9AimtVLGALuL/IipnYvbZ2S7LeYphbYM6l66yEPaVNSPY31wyHwU+K1zeJpQp1ICLFE59XPEDQ==" length="59453822" />
+                 sparkle:edSignature="5clE0RxEh31kummDoM+eA1B10siF72eukoqaSsIpDzfnyTzOyjDRg46dg3rfQjK0/axIHFv8tWwAJUKMg/qJBw==" length="59654783" />
     </item>
   </channel>
 </rss>
