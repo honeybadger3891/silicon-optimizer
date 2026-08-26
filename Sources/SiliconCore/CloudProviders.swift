@@ -7,13 +7,14 @@ import Foundation
 /// model appears in any picker — while `CloudCredentials` is empty. That is the whole
 /// contract: opt in or the feature does not exist.
 ///
-/// Four providers, because they all speak OpenAI for chat and the difference is a base URL
+/// Five providers, because they all speak OpenAI for chat and the difference is a base URL
 /// and which catalogue the key unlocks.
 public enum CloudProvider: String, Codable, CaseIterable, Sendable, Identifiable {
     case gmi = "gmi"
     case openRouter = "open-router"
     case nvidia = "nvidia"
     case tokenHarbor = "token-harbor"
+    case aiHubMix = "aihubmix"
 
     public var id: String { rawValue }
 
@@ -23,6 +24,7 @@ public enum CloudProvider: String, Codable, CaseIterable, Sendable, Identifiable
         case .openRouter: "OpenRouter"
         case .nvidia: "NVIDIA"
         case .tokenHarbor: "Token Harbor"
+        case .aiHubMix: "AIHubMix"
         }
     }
 
@@ -34,6 +36,7 @@ public enum CloudProvider: String, Codable, CaseIterable, Sendable, Identifiable
         case .openRouter: URL(string: "https://openrouter.ai/api/v1")!
         case .nvidia: URL(string: "https://integrate.api.nvidia.com/v1")!
         case .tokenHarbor: URL(string: "https://tokenharbor.ai/v1")!
+        case .aiHubMix: URL(string: "https://aihubmix.com/v1")!
         }
     }
 
@@ -47,7 +50,7 @@ public enum CloudProvider: String, Codable, CaseIterable, Sendable, Identifiable
     public var jobsBaseURL: URL? {
         switch self {
         case .gmi: URL(string: "https://console.gmicloud.ai")!
-        case .openRouter, .nvidia, .tokenHarbor: nil
+        case .openRouter, .nvidia, .tokenHarbor, .aiHubMix: nil
         }
     }
 
@@ -58,17 +61,32 @@ public enum CloudProvider: String, Codable, CaseIterable, Sendable, Identifiable
         case .openRouter: URL(string: "https://openrouter.ai/keys")!
         case .nvidia: URL(string: "https://build.nvidia.com/settings/api-keys")!
         case .tokenHarbor: URL(string: "https://tokenharbor.ai/dashboard/api-keys")!
+        case .aiHubMix: URL(string: "https://aihubmix.com/token")!
         }
     }
 
     public var offersAudio: Bool { jobsBaseURL != nil }
+
+    /// How this provider spells "costs nothing" in a model id, when it has such a tier.
+    /// Token Harbor: "never charges your balance". AIHubMix: daily quotas, the same
+    /// upstream model as the paid id. Per provider on purpose — a "-free" on Token
+    /// Harbor is just a name, and a ":free" on AIHubMix is not their tier.
+    public var freeSuffix: String? {
+        switch self {
+        case .tokenHarbor: ":free"
+        case .aiHubMix: "-free"
+        case .gmi, .openRouter, .nvidia: nil
+        }
+    }
 }
 
 extension CloudModel {
-    /// Token Harbor marks its standing free tier by suffix — "never charges your balance",
-    /// in its own words. Read from the id the provider sent, not from a list kept here,
-    /// so a model moving in or out of the tier is right on the day it happens.
-    public var isFree: Bool { id.hasSuffix(":free") }
+    /// Read from the id the provider sent, never from a list kept here, so a model
+    /// moving in or out of a free tier is right on the day it happens.
+    public var isFree: Bool {
+        guard let suffix = provider.freeSuffix else { return false }
+        return id.hasSuffix(suffix)
+    }
 }
 
 // MARK: - Credentials
@@ -162,14 +180,21 @@ public struct CloudModel: Sendable, Equatable, Identifiable, Codable {
     public var displayName: String
     public var provider: CloudProvider
     public var contextWindow: Int?
+    /// The `owned_by` field of the listing, when the provider sent one. The maker filter
+    /// reads the id's "owner/model" slash first and falls back to this — AIHubMix and
+    /// Token Harbor put no slash in their ids, and a 400-model list without a maker
+    /// filter is a wall.
+    public var owner: String?
 
     public init(
-        id: String, displayName: String, provider: CloudProvider, contextWindow: Int? = nil
+        id: String, displayName: String, provider: CloudProvider, contextWindow: Int? = nil,
+        owner: String? = nil
     ) {
         self.id = id
         self.displayName = displayName
         self.provider = provider
         self.contextWindow = contextWindow
+        self.owner = owner
     }
 
     /// The gateway id this model answers to — `cloud/<provider>/<model>`. The model half may

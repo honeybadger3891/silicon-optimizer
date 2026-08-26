@@ -100,6 +100,9 @@ struct CloudProvidersSection: View {
         case .tokenHarbor:
             "One key across the big labs. Chat only. Models whose id ends in :free never "
             + "charge your balance."
+        case .aiHubMix:
+            "Four hundred models, fifty-odd free on daily quotas — the ids ending in -free. "
+            + "Chat only."
         }
     }
 

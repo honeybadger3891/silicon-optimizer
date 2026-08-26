@@ -120,8 +120,10 @@ extension AppModel {
             let name = (entry["name"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? id
             let context = ["context_length", "context_window", "max_model_len"]
                 .lazy.compactMap { entry[$0] as? Int }.first
+            let owner = (entry["owned_by"] as? String).flatMap { $0.isEmpty ? nil : $0 }
             return CloudModel(
-                id: id, displayName: name, provider: provider, contextWindow: context
+                id: id, displayName: name, provider: provider, contextWindow: context,
+                owner: owner
             )
         }
     }

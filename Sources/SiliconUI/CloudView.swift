@@ -200,7 +200,7 @@ struct CloudView: View {
     private func ownersFor(_ provider: CloudProvider) -> [String] {
         let owners = model.cloudModels
             .filter { $0.provider == provider }
-            .compactMap { CloudView.owner(of: $0.id) }
+            .compactMap { CloudView.maker(of: $0) }
         return Array(Set(owners)).sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
 
@@ -210,6 +210,11 @@ struct CloudView: View {
         guard let slash = id.firstIndex(of: "/") else { return nil }
         let owner = String(id[..<slash])
         return owner.isEmpty ? nil : owner
+    }
+
+    /// The maker: the id's own "owner/" when it has one, else what the listing said.
+    static func maker(of entry: CloudModel) -> String? {
+        owner(of: entry.id) ?? entry.owner
     }
 
     /// The model's own name, with its maker taken off the front.
@@ -227,8 +232,9 @@ struct CloudView: View {
     /// which is the part that actually differs between neighbouring rows.
     static func labels(for entry: CloudModel) -> (title: String, subtitle: String) {
         guard entry.displayName == entry.id else { return (entry.displayName, entry.id) }
-        guard let owner = owner(of: entry.id) else { return (entry.id, "") }
-        return (bareName(of: entry.id), owner)
+        if let owner = owner(of: entry.id) { return (bareName(of: entry.id), owner) }
+        // No slash to split: the listing's owner is the maker, when it sent one.
+        return (entry.id, entry.owner ?? "")
     }
 
     private var enabledModels: [CloudModel] {
@@ -258,7 +264,7 @@ struct CloudView: View {
             let needle = search.trimmingCharacters(in: .whitespacesAndNewlines)
             return model.cloudModels
                 .filter { $0.provider == provider }
-                .filter { ownerFilter == nil || CloudView.owner(of: $0.id) == ownerFilter }
+                .filter { ownerFilter == nil || CloudView.maker(of: $0) == ownerFilter }
                 .filter { !enabledOnly || enabled.contains($0.gatewayID) }
                 .filter {
                     needle.isEmpty
@@ -581,7 +587,7 @@ private struct CloudDetailPane: View {
 
         Divider()
 
-        DetailRow("Maker", CloudView.owner(of: entry.id) ?? "—")
+        DetailRow("Maker", CloudView.maker(of: entry) ?? "—")
         DetailRow("Called this by \(entry.provider.displayName)", entry.id, mono: true)
         DetailRow("Called this here", entry.gatewayID, mono: true)
         DetailRow(
@@ -744,6 +750,9 @@ private struct CloudDetailPane: View {
         case .tokenHarbor:
             "One key and one balance across Anthropic, OpenAI, Google, DeepSeek and the rest. "
             + "Chat only. A standing free tier: any id ending in :free never charges you."
+        case .aiHubMix:
+            "Four hundred models behind one key, fifty-odd of them free — the ids ending in "
+            + "-free, on daily quotas. Chat only."
         }
     }
 
@@ -853,6 +862,9 @@ private struct CloudSetupPane: View {
         case .tokenHarbor:
             "One key across the big labs, with a standing free tier — ids ending in :free "
             + "never charge your balance."
+        case .aiHubMix:
+            "Four hundred models, fifty-odd of them free on daily quotas — the ids ending "
+            + "in -free."
         }
     }
 

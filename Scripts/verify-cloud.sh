@@ -20,7 +20,7 @@
 # one that has a value wins.
 #
 #   Keys: build.nvidia.com/settings/api-keys · openrouter.ai/keys · console.gmicloud.ai/apikeys
-#         tokenharbor.ai/dashboard/api-keys
+#         tokenharbor.ai/dashboard/api-keys · aihubmix.com/token
 #
 #   Scripts/verify-cloud.sh              # chat everywhere, plus GMI speech
 #   Scripts/verify-cloud.sh --music      # …and a song, which takes 30–60s
@@ -218,6 +218,7 @@ NVIDIA_KEY=$(key_for NVIDIA_API_KEY nvidia)
 OPENROUTER_KEY=$(key_for OPENROUTER_API_KEY open-router)
 GMI_KEY=$(key_for GMI_API_KEY gmi)
 TOKENHARBOR_KEY=$(key_for TOKENHARBOR_API_KEY token-harbor)
+AIHUBMIX_KEY=$(key_for AIHUBMIX_API_KEY aihubmix)
 
 section 'NVIDIA'
 if [[ -n "$NVIDIA_KEY" ]]; then
@@ -239,6 +240,13 @@ if [[ -n "$TOKENHARBOR_KEY" ]]; then
   verify_chat 'Token Harbor' 'https://tokenharbor.ai/v1' "$TOKENHARBOR_KEY" ':free'
 else
   none 'no Token Harbor key — set TOKENHARBOR_API_KEY in .env'
+fi
+
+section 'AIHubMix'
+if [[ -n "$AIHUBMIX_KEY" ]]; then
+  verify_chat 'AIHubMix' 'https://aihubmix.com/v1' "$AIHUBMIX_KEY" '-free'
+else
+  none 'no AIHubMix key — set AIHUBMIX_API_KEY in .env'
 fi
 
 section 'GMI Cloud'

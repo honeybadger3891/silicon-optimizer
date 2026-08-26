@@ -195,6 +195,60 @@ struct CloudProviderTests {
         #expect(!CloudModel(id: "free:model", displayName: "x", provider: .tokenHarbor).isFree)
     }
 
+    /// AIHubMix's public listing, in the shape it actually answers: id and owned_by, no
+    /// context, no slash in the id. The owner is the only maker information there is.
+    @Test func aiHubMixListsAreReadWithTheirOwnerAndTheirFreeSuffix() throws {
+        #expect(CloudProvider.aiHubMix.chatBaseURL.absoluteString == "https://aihubmix.com/v1")
+        #expect(!CloudProvider.aiHubMix.offersAudio)
+
+        let body = Data("""
+        {"data": [{"id": "coding-glm-5.3-free", "object": "model", "created": 1626777600, "owned_by": "Z.AI"},
+                  {"id": "glm-5.3-flash", "object": "model", "created": 1626777600, "owned_by": "Z.AI"},
+                  {"id": "gpt-5.5-free", "object": "model", "created": 1626777600, "owned_by": ""}]}
+        """.utf8)
+        let models = AppModel.parseCloudModels(body, provider: .aiHubMix)
+        #expect(models.count == 3)
+
+        let free = try #require(models.first { $0.id == "coding-glm-5.3-free" })
+        #expect(free.isFree)
+        #expect(free.owner == "Z.AI")
+        #expect(free.contextWindow == nil)
+        // No slash to split, so the listing's owner becomes the second line.
+        let labels = CloudView.labels(for: free)
+        #expect(labels.title == "coding-glm-5.3-free")
+        #expect(labels.subtitle == "Z.AI")
+        #expect(CloudView.maker(of: free) == "Z.AI")
+
+        let paid = try #require(models.first { $0.id == "glm-5.3-flash" })
+        #expect(!paid.isFree)
+
+        // An empty owned_by is no owner, not an owner called "".
+        let blank = try #require(models.first { $0.id == "gpt-5.5-free" })
+        #expect(blank.owner == nil)
+        #expect(CloudView.labels(for: blank).subtitle.isEmpty)
+    }
+
+    /// Each provider spells "free" its own way, and one provider's spelling must not be
+    /// read as the tier on another — a "-free" on Token Harbor is just a name.
+    @Test func theFreeSuffixIsPerProvider() {
+        #expect(CloudModel(id: "x-free", displayName: "x", provider: .aiHubMix).isFree)
+        #expect(!CloudModel(id: "x:free", displayName: "x", provider: .aiHubMix).isFree)
+        #expect(CloudModel(id: "x:free", displayName: "x", provider: .tokenHarbor).isFree)
+        #expect(!CloudModel(id: "x-free", displayName: "x", provider: .tokenHarbor).isFree)
+        // Providers with no free tier never claim one, whatever the id says.
+        #expect(!CloudModel(id: "x-free", displayName: "x", provider: .nvidia).isFree)
+        #expect(!CloudModel(id: "x:free", displayName: "x", provider: .openRouter).isFree)
+    }
+
+    /// When both are present the id's own slash wins: it is the provider's canonical
+    /// grouping, and owned_by is sometimes a gateway's name rather than the maker's.
+    @Test func aSlashInTheIDOutranksOwnedBy() {
+        let entry = CloudModel(id: "nvidia/nemotron-x", displayName: "nvidia/nemotron-x",
+                               provider: .nvidia, owner: "NVIDIA Corp")
+        #expect(CloudView.maker(of: entry) == "nvidia")
+        #expect(CloudView.labels(for: entry).subtitle == "nvidia")
+    }
+
     // MARK: - What a row prints
 
     /// NVIDIA and GMI return ids with no display name, so `displayName` falls back to the id.
