@@ -7,11 +7,12 @@ import Foundation
 /// model appears in any picker — while `CloudCredentials` is empty. That is the whole
 /// contract: opt in or the feature does not exist.
 ///
-/// Two providers, because both speak OpenAI for chat and the difference is a base URL and
-/// which catalogue the key unlocks.
+/// Three providers, because they all speak OpenAI for chat and the difference is a base URL
+/// and which catalogue the key unlocks.
 public enum CloudProvider: String, Codable, CaseIterable, Sendable, Identifiable {
     case gmi = "gmi"
     case openRouter = "open-router"
+    case nvidia = "nvidia"
 
     public var id: String { rawValue }
 
@@ -19,6 +20,7 @@ public enum CloudProvider: String, Codable, CaseIterable, Sendable, Identifiable
         switch self {
         case .gmi: "GMI Cloud"
         case .openRouter: "OpenRouter"
+        case .nvidia: "NVIDIA"
         }
     }
 
@@ -28,6 +30,7 @@ public enum CloudProvider: String, Codable, CaseIterable, Sendable, Identifiable
         switch self {
         case .gmi: URL(string: "https://api.gmi-serving.com/v1")!
         case .openRouter: URL(string: "https://openrouter.ai/api/v1")!
+        case .nvidia: URL(string: "https://integrate.api.nvidia.com/v1")!
         }
     }
 
@@ -35,12 +38,13 @@ public enum CloudProvider: String, Codable, CaseIterable, Sendable, Identifiable
     /// different protocol — submit-then-poll rather than OpenAI — which is why it is its own
     /// property rather than a path on the other one.
     ///
-    /// OpenRouter brokers chat only; it has no audio job API, so speech and music are GMI's
-    /// alone and this is nil there.
+    /// Only GMI has one. OpenRouter brokers chat, and NVIDIA's hosted catalogue is language
+    /// models only — its three `riva-translate` entries are text, not speech, despite Riva
+    /// being NVIDIA's speech brand elsewhere. So speech and music are GMI's alone.
     public var jobsBaseURL: URL? {
         switch self {
         case .gmi: URL(string: "https://console.gmicloud.ai")!
-        case .openRouter: nil
+        case .openRouter, .nvidia: nil
         }
     }
 
@@ -49,6 +53,7 @@ public enum CloudProvider: String, Codable, CaseIterable, Sendable, Identifiable
         switch self {
         case .gmi: URL(string: "https://console.gmicloud.ai/apikeys")!
         case .openRouter: URL(string: "https://openrouter.ai/keys")!
+        case .nvidia: URL(string: "https://build.nvidia.com/settings/api-keys")!
         }
     }
 

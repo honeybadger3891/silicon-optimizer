@@ -94,6 +94,9 @@ struct CloudProvidersSection: View {
             "Chat models, plus the speech and music models in the Voice tab."
         case .openRouter:
             "Chat models only — OpenRouter brokers text, not audio."
+        case .nvidia:
+            "Chat models only, and free to start: the developer program hands out a key "
+            + "without a card. Rate limited rather than metered."
         }
     }
 

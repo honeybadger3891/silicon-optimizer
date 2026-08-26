@@ -128,6 +128,46 @@ struct CloudProviderTests {
         #expect(AppModel.providerMessage(inBody: Data("nonsense".utf8)) == nil)
     }
 
+    /// NVIDIA's hosted catalogue, in the shape it actually answers with: no display name and
+    /// no context length, just an id and an owner. Every id carries a slash, which is the
+    /// case that would break a naive `cloud/` parser.
+    @Test func discoveryReadsTheSparseNVIDIAShape() throws {
+        let body = Data(#"""
+        {"object": "list", "data": [
+          {"id": "nvidia/llama-3.1-nemotron-ultra-253b-v1", "object": "model",
+           "created": 735790403, "owned_by": "nvidia"},
+          {"id": "moonshotai/kimi-k3", "object": "model",
+           "created": 735790403, "owned_by": "moonshotai"}
+        ]}
+        """#.utf8)
+
+        let models = AppModel.parseCloudModels(body, provider: .nvidia)
+        #expect(models.count == 2)
+
+        let nemotron = try #require(models.first)
+        // No name and no window are offered, so none are invented.
+        #expect(nemotron.displayName == "nvidia/llama-3.1-nemotron-ultra-253b-v1")
+        #expect(nemotron.contextWindow == nil)
+
+        // The id's own slash must survive the round trip through the gateway id.
+        let parsed = try #require(GatewayAPI.parseModelID(nemotron.gatewayID))
+        #expect(parsed == .cloud(
+            provider: "nvidia", model: "nvidia/llama-3.1-nemotron-ultra-253b-v1"
+        ))
+    }
+
+    @Test func nvidiaIsChatOnlyAndPointsAtItsHostedCatalogue() {
+        #expect(
+            CloudProvider.nvidia.chatBaseURL.absoluteString
+                == "https://integrate.api.nvidia.com/v1"
+        )
+        // Riva is NVIDIA's speech brand, but the three riva-* entries in this catalogue are
+        // translation models. There is no audio queue here, so none is advertised.
+        #expect(!CloudProvider.nvidia.offersAudio)
+        #expect(CloudProvider.nvidia.jobsBaseURL == nil)
+        #expect(VoiceCatalog.cloudEntries(for: .nvidia, kind: .speak).isEmpty)
+    }
+
     // MARK: - Remote models as catalogue entries
 
     /// The Voice tab's pickers hold entry ids, and the runner has to get a provider and a
