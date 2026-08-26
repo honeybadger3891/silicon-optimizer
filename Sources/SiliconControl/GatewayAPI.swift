@@ -429,6 +429,16 @@ public enum GatewayAPI {
     ) -> String? {
         guard content.isEmpty else { return nil }
         if reasoningChars > 0 {
+            // Two different failures wear the same shape. Running out of budget mid-thought
+            // is fixed by raising it; stopping voluntarily with the answer left in the
+            // reasoning field is not, and telling someone to raise max_tokens there sends
+            // them to spend money on a setting that was never the problem.
+            guard finishReason == "length" else {
+                return "The model stopped with \(reasoningChars) characters of reasoning and "
+                    + "no answer — its reply went to the reasoning field rather than content. "
+                    + "Observed from MiniMax M3 on a request for a very short answer; asking "
+                    + "for more than a word or two usually settles it."
+            }
             return "The model spent its entire token budget thinking (\(reasoningChars) "
                 + "characters of reasoning, no answer). Disable thinking with "
                 + "enable_thinking: false, or raise max_tokens."

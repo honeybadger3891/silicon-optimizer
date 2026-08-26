@@ -112,21 +112,36 @@ print(m[0] if m else '')")
 import json
 print(json.dumps({'model': '${model}',
                   'messages': [{'role': 'user', 'content': 'Reply with exactly: pong'}],
-                  'max_tokens': 16}))")
+                  'max_tokens': 512}))")
   reply=$(curl -s --max-time 120 -X POST "${base}/chat/completions" \
     -H "Authorization: Bearer ${key}" -H 'Content-Type: application/json' -d "$body")
 
-  local text
-  text=$(printf '%s' "$reply" | jqp "
+  # A reasoning model can answer with an empty `content` and its thinking somewhere else, so
+  # "no content" is not the same as "no answer" and must not be reported as one.
+  local verdict
+  verdict=$(printf '%s' "$reply" | jqp "
 import json,sys
 d = json.load(sys.stdin)
-print((d.get('choices') or [{}])[0].get('message', {}).get('content', '').strip()[:60])")
-  if [[ -n "$text" ]]; then
-    ok "${name}: chat answered — “${text}”"
-  else
-    bad "${name}: chat returned no content"
-    note "$(printf '%s' "$reply" | head -c 300)"
-  fi
+c = (d.get('choices') or [{}])[0]
+m = c.get('message') or {}
+text = (m.get('content') or '').strip()
+if text:
+    print('ok|' + text[:60].replace(chr(10), ' '))
+elif m.get('reasoning') or m.get('reasoning_content'):
+    print('ok|(reasoned, empty content — finish_reason ' + str(c.get('finish_reason')) + ')')
+elif c.get('finish_reason') == 'length':
+    print('cut|budget spent before any content')
+else:
+    print('no|')")
+
+  case "$verdict" in
+    ok\|*)  ok "${name}: chat answered — ${verdict#ok|}" ;;
+    cut\|*) bad "${name}: ${verdict#cut|}" ;;
+    *)
+      bad "${name}: chat returned no answer"
+      note "$(printf '%s' "$reply" | head -c 300)"
+      ;;
+  esac
 }
 
 # --- GMI's audio queue --------------------------------------------------------------------
@@ -143,12 +158,16 @@ verify_audio() {          # label, model, payload-json
   body=$(python3 -c "
 import json
 print(json.dumps({'model': '${model}', 'payload': json.loads('''${payload}''')}))")
-  submitted=$(curl -s --max-time 60 -X POST "$queue" \
+  local status_code
+  submitted=$(curl -s --max-time 60 -w '\n%{http_code}' -X POST "$queue" \
     -H "Authorization: Bearer ${GMI_KEY}" -H 'Content-Type: application/json' -d "$body")
+  status_code="${submitted##*$'\n'}"
+  submitted="${submitted%$'\n'*}"
 
   request_id=$(printf '%s' "$submitted" | jqp 'import json,sys; print(json.load(sys.stdin).get("request_id",""))')
   if [[ -z "$request_id" ]]; then
-    bad "${label}: submit rejected"
+    bad "${label}: submit rejected (HTTP ${status_code})"
+    # An empty body says nothing; the status code at least says which wall was hit.
     note "$(printf '%s' "$submitted" | head -c 300)"
     return
   fi

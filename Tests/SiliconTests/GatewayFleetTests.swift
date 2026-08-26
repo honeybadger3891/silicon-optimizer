@@ -81,6 +81,24 @@ struct GatewayWarningTests {
         #expect(warning?.contains("max_tokens") == true)
     }
 
+    /// Observed, not imagined: MiniMax M3 through OpenRouter answered "Reply with exactly:
+    /// pong" with reasoning, no content, and finish_reason "stop" — 512 tokens unspent. The
+    /// budget advice would have been wrong, and expensive to follow.
+    @Test("a model that stops with only reasoning is not told to buy more tokens")
+    func reasoningWithoutTruncation() throws {
+        let warning = try #require(GatewayAPI.emptyContentWarning(
+            content: "", reasoningChars: 480, finishReason: "stop"
+        ))
+        #expect(warning.contains("reasoning field"))
+        #expect(!warning.contains("max_tokens"), "nothing ran out; raising it changes nothing")
+
+        // The budget case keeps its own advice.
+        let truncated = try #require(GatewayAPI.emptyContentWarning(
+            content: "", reasoningChars: 12_000, finishReason: "length"
+        ))
+        #expect(truncated.contains("max_tokens"))
+    }
+
     @Test("a healthy answer raises nothing")
     func healthyAnswer() {
         #expect(GatewayAPI.emptyContentWarning(
