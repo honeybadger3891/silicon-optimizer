@@ -20,6 +20,7 @@
 # one that has a value wins.
 #
 #   Keys: build.nvidia.com/settings/api-keys · openrouter.ai/keys · console.gmicloud.ai/apikeys
+#         tokenharbor.ai/dashboard/api-keys
 #
 #   Scripts/verify-cloud.sh              # chat everywhere, plus GMI speech
 #   Scripts/verify-cloud.sh --music      # …and a song, which takes 30–60s
@@ -216,6 +217,7 @@ print(found[0] if found else '')")
 NVIDIA_KEY=$(key_for NVIDIA_API_KEY nvidia)
 OPENROUTER_KEY=$(key_for OPENROUTER_API_KEY open-router)
 GMI_KEY=$(key_for GMI_API_KEY gmi)
+TOKENHARBOR_KEY=$(key_for TOKENHARBOR_API_KEY token-harbor)
 
 section 'NVIDIA'
 if [[ -n "$NVIDIA_KEY" ]]; then
@@ -229,6 +231,14 @@ if [[ -n "$OPENROUTER_KEY" ]]; then
   verify_chat 'OpenRouter' 'https://openrouter.ai/api/v1' "$OPENROUTER_KEY" 'minimax'
 else
   none 'no OpenRouter key — set OPENROUTER_API_KEY in .env'
+fi
+
+section 'Token Harbor'
+if [[ -n "$TOKENHARBOR_KEY" ]]; then
+  # Prefer a :free model, so the check costs nothing.
+  verify_chat 'Token Harbor' 'https://tokenharbor.ai/v1' "$TOKENHARBOR_KEY" ':free'
+else
+  none 'no Token Harbor key — set TOKENHARBOR_API_KEY in .env'
 fi
 
 section 'GMI Cloud'

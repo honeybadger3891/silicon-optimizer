@@ -168,6 +168,33 @@ struct CloudProviderTests {
         #expect(VoiceCatalog.cloudEntries(for: .nvidia, kind: .speak).isEmpty)
     }
 
+    /// Token Harbor's ids carry no maker slash at all — "deepseek-v4-flash:free" — which is
+    /// the one shape the two-separator rule had not yet been asked to round-trip.
+    @Test func tokenHarborIsChatOnlyAndItsSlashlessIDsRoundTrip() throws {
+        #expect(CloudProvider.tokenHarbor.chatBaseURL.absoluteString == "https://tokenharbor.ai/v1")
+        #expect(!CloudProvider.tokenHarbor.offersAudio)
+
+        let body = Data("""
+        {"data": [{"id": "deepseek-v4-flash:free", "object": "model"},
+                  {"id": "claude-opus-5", "object": "model"}]}
+        """.utf8)
+        let models = AppModel.parseCloudModels(body, provider: .tokenHarbor)
+        #expect(models.count == 2)
+
+        let free = try #require(models.first { $0.id == "deepseek-v4-flash:free" })
+        let parsed = try #require(GatewayAPI.parseModelID(free.gatewayID))
+        #expect(parsed == .cloud(provider: "token-harbor", model: "deepseek-v4-flash:free"))
+    }
+
+    /// The free tier is read off the id the provider sent — "never charges your balance",
+    /// by suffix — not off a list kept here that would rot the day a model moved tiers.
+    @Test func theFreeTierIsReadFromTheSuffix() {
+        #expect(CloudModel(id: "deepseek-v4-flash:free", displayName: "x", provider: .tokenHarbor).isFree)
+        #expect(!CloudModel(id: "deepseek-v4-flash", displayName: "x", provider: .tokenHarbor).isFree)
+        // A ":free" anywhere but the end is not the tier.
+        #expect(!CloudModel(id: "free:model", displayName: "x", provider: .tokenHarbor).isFree)
+    }
+
     // MARK: - What a row prints
 
     /// NVIDIA and GMI return ids with no display name, so `displayName` falls back to the id.

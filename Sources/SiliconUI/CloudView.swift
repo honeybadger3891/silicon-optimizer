@@ -272,11 +272,15 @@ struct CloudView: View {
     private func row(for entry: CloudModel) -> CloudRow {
         let enabled = Set(model.settings.enabledCloudModels ?? [])
         let labels = CloudView.labels(for: entry)
+        var detail = entry.contextWindow.map { "\($0 / 1000)K" }
+        // "free" beats a context figure for the one question the column is there to
+        // answer — what does picking this cost me — and the id still carries the suffix.
+        if entry.isFree { detail = "free" }
         return CloudRow(
             id: entry.gatewayID,
             title: labels.title,
             subtitle: labels.subtitle,
-            detail: entry.contextWindow.map { "\($0 / 1000)K" },
+            detail: detail,
             enabled: enabled.contains(entry.gatewayID)
         )
     }
@@ -737,6 +741,9 @@ private struct CloudDetailPane: View {
         case .nvidia:
             "Around 95 open models on NVIDIA's own hardware. The developer key is free and "
             + "needs no card; you are rate limited rather than metered. Chat only."
+        case .tokenHarbor:
+            "One key and one balance across Anthropic, OpenAI, Google, DeepSeek and the rest. "
+            + "Chat only. A standing free tier: any id ending in :free never charges you."
         }
     }
 
@@ -842,7 +849,10 @@ private struct CloudSetupPane: View {
         case .openRouter:
             "One key, most of the industry's models behind it — several hundred."
         case .gmi:
-            "Chat models, plus the only speech and music queue of the three."
+            "Chat models, plus the only speech and music queue of the four."
+        case .tokenHarbor:
+            "One key across the big labs, with a standing free tier — ids ending in :free "
+            + "never charge your balance."
         }
     }
 

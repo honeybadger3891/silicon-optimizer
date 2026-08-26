@@ -97,6 +97,9 @@ struct CloudProvidersSection: View {
         case .nvidia:
             "Chat models only, and free to start: the developer program hands out a key "
             + "without a card. Rate limited rather than metered."
+        case .tokenHarbor:
+            "One key across the big labs. Chat only. Models whose id ends in :free never "
+            + "charge your balance."
         }
     }
 

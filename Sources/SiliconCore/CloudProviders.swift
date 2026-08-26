@@ -7,12 +7,13 @@ import Foundation
 /// model appears in any picker — while `CloudCredentials` is empty. That is the whole
 /// contract: opt in or the feature does not exist.
 ///
-/// Three providers, because they all speak OpenAI for chat and the difference is a base URL
+/// Four providers, because they all speak OpenAI for chat and the difference is a base URL
 /// and which catalogue the key unlocks.
 public enum CloudProvider: String, Codable, CaseIterable, Sendable, Identifiable {
     case gmi = "gmi"
     case openRouter = "open-router"
     case nvidia = "nvidia"
+    case tokenHarbor = "token-harbor"
 
     public var id: String { rawValue }
 
@@ -21,6 +22,7 @@ public enum CloudProvider: String, Codable, CaseIterable, Sendable, Identifiable
         case .gmi: "GMI Cloud"
         case .openRouter: "OpenRouter"
         case .nvidia: "NVIDIA"
+        case .tokenHarbor: "Token Harbor"
         }
     }
 
@@ -31,6 +33,7 @@ public enum CloudProvider: String, Codable, CaseIterable, Sendable, Identifiable
         case .gmi: URL(string: "https://api.gmi-serving.com/v1")!
         case .openRouter: URL(string: "https://openrouter.ai/api/v1")!
         case .nvidia: URL(string: "https://integrate.api.nvidia.com/v1")!
+        case .tokenHarbor: URL(string: "https://tokenharbor.ai/v1")!
         }
     }
 
@@ -44,7 +47,7 @@ public enum CloudProvider: String, Codable, CaseIterable, Sendable, Identifiable
     public var jobsBaseURL: URL? {
         switch self {
         case .gmi: URL(string: "https://console.gmicloud.ai")!
-        case .openRouter, .nvidia: nil
+        case .openRouter, .nvidia, .tokenHarbor: nil
         }
     }
 
@@ -54,10 +57,18 @@ public enum CloudProvider: String, Codable, CaseIterable, Sendable, Identifiable
         case .gmi: URL(string: "https://console.gmicloud.ai/apikeys")!
         case .openRouter: URL(string: "https://openrouter.ai/keys")!
         case .nvidia: URL(string: "https://build.nvidia.com/settings/api-keys")!
+        case .tokenHarbor: URL(string: "https://tokenharbor.ai/dashboard/api-keys")!
         }
     }
 
     public var offersAudio: Bool { jobsBaseURL != nil }
+}
+
+extension CloudModel {
+    /// Token Harbor marks its standing free tier by suffix — "never charges your balance",
+    /// in its own words. Read from the id the provider sent, not from a list kept here,
+    /// so a model moving in or out of the tier is right on the day it happens.
+    public var isFree: Bool { id.hasSuffix(":free") }
 }
 
 // MARK: - Credentials
