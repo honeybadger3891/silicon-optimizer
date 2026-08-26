@@ -20,8 +20,14 @@ extension AppModel {
         // Every interpreter in the usual places; the link picks among them by wheel
         // coverage, not recency, so all of them are offered.
         var pythons: [URL] = []
-        for directory in ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin",
-                          home.appendingPathComponent(".pyenv/shims").path] {
+        // The python.org installer puts each version under its own Framework directory and
+        // only sometimes symlinks it into /usr/local/bin; look in both.
+        var directories = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin",
+                           home.appendingPathComponent(".pyenv/shims").path]
+        for version in ["3.12", "3.11", "3.13", "3.10"] {
+            directories.append("/Library/Frameworks/Python.framework/Versions/\(version)/bin")
+        }
+        for directory in directories {
             for name in ["python3.12", "python3.11", "python3.13", "python3.10", "python3"] {
                 let candidate = URL(fileURLWithPath: "\(directory)/\(name)")
                 if files.isExecutableFile(atPath: candidate.path) { pythons.append(candidate) }
