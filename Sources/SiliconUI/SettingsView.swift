@@ -174,6 +174,10 @@ struct SettingsView: View {
                 }
             }
 
+            Section("Video production") {
+                openMontageRow
+            }
+
             Section("Chat template") {
                 Toggle("Use the sharp template for Qwen", isOn: sharpTemplateBinding)
                 Text(
@@ -628,6 +632,75 @@ struct SettingsView: View {
                     EmptyView()
                 }
             }
+        }
+    }
+
+    // MARK: - OpenMontage
+
+    /// One row, four states. The caption always says what the button will do, because a
+    /// button called "Set up" that takes ten minutes deserves a sentence of warning.
+    private var openMontageRow: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("OpenMontage")
+                Text(openMontageCaption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let stage = model.openMontageStage {
+                    Text(stage + "…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else if let note = model.openMontageNote {
+                    Text(note)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Spacer()
+            if model.openMontageStage != nil {
+                ProgressView().controlSize(.small)
+            } else {
+                switch model.openMontageStatus {
+                case .notInstalled:
+                    Button("Set up") { Task { await model.setUpOpenMontage() } }
+                case .ready:
+                    HStack(spacing: 8) {
+                        Badge(text: "Linked", systemImage: "checkmark.circle.fill", tint: .green)
+                        Button("Open in Chat") { model.openOpenMontageInChat() }
+                    }
+                case .providerOutdated:
+                    Button("Update") { model.relinkOpenMontage() }
+                case .checkoutWithoutProvider:
+                    Button("Link") { model.relinkOpenMontage() }
+                case .unavailable:
+                    EmptyView()
+                }
+            }
+        }
+        .onAppear { model.refreshOpenMontage() }
+    }
+
+    private var openMontageCaption: String {
+        switch model.openMontageStatus {
+        case .notInstalled:
+            return "An open-source video studio your agent drives: research, script, shots, "
+                + "edit, render. Set up downloads it to ~/OpenMontage and installs what it "
+                + "needs — several minutes and a few gigabytes — then links this app in, so "
+                + "its images, video and 3D show up there at $0."
+        case .ready:
+            return "In ~/OpenMontage, with this app as a provider. Open in Chat puts Codex "
+                + "in that folder; ask it for a video."
+        case .providerOutdated(let installed, let available):
+            return "Linked, but the provider in ~/OpenMontage is version \(installed) and "
+                + "this app carries \(available)."
+        case .checkoutWithoutProvider:
+            return "Found at ~/OpenMontage. Link drops this app in as a provider — nothing "
+                + "else in the checkout is touched."
+        case .unavailable(let reason):
+            return reason
         }
     }
 

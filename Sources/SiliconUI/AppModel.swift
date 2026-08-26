@@ -161,6 +161,12 @@ public final class AppModel {
     public internal(set) var agentBridgeBusy: AgentBridge.Client?
     public internal(set) var agentBridgeNotes: [String: String] = [:]
 
+    // OpenMontage: the video studio this app plugs into (see AppModel+OpenMontage)
+    public internal(set) var openMontageStatus: OpenMontageLink.Status = .notInstalled
+    /// The step under way, or nil when idle. Doubles as the busy flag.
+    public internal(set) var openMontageStage: String?
+    public internal(set) var openMontageNote: String?
+
     // The Swarm page's People panel (see AppModel+SwarmPairing)
     internal(set) var swarmMembers: [SwarmMember] = []
     internal(set) var swarmMembersLoaded = false

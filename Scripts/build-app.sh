@@ -151,6 +151,17 @@ if [[ -f Resources/pi-silicon/silicon.ts ]]; then
     cp Resources/pi-silicon/silicon.ts "$BUNDLE/Contents/Resources/pi-silicon/"
 fi
 
+# The OpenMontage provider: three Python tools and a skill file that Settings copies into
+# a checkout, so this app's images, video and meshes appear in OpenMontage's catalogue at
+# $0. The tests stay behind — they run against a checkout, not from the bundle.
+if [[ -f Resources/openmontage/VERSION ]]; then
+    echo "==> Embedding OpenMontage provider"
+    mkdir -p "$BUNDLE/Contents/Resources/openmontage"
+    cp -R Resources/openmontage/tools Resources/openmontage/skills Resources/openmontage/VERSION \
+        "$BUNDLE/Contents/Resources/openmontage/"
+    find "$BUNDLE/Contents/Resources/openmontage" -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null || true
+fi
+
 # The live face camera's driver: a script the app hands to Deep-Live-Cam's own
 # environment. It lives in Resources rather than being generated at runtime so it can
 # be read, diffed and fixed like any other source file.
