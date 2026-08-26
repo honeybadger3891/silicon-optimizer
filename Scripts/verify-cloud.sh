@@ -7,11 +7,21 @@
 # needs credentials, which is exactly why it exists as a script you run rather than a test
 # that silently never runs.
 #
-# Keys come from the environment and are never printed. Set only the ones you have:
+# Keys are never printed, and only ever read — from a file, or from the environment.
 #
-#   export NVIDIA_API_KEY=nvapi-…        # free, no card — build.nvidia.com/settings/api-keys
-#   export OPENROUTER_API_KEY=sk-or-…    # openrouter.ai/keys
-#   export GMI_API_KEY=…                 # console.gmicloud.ai/apikeys
+# The file is the better habit. A key on a command line lands in your shell history, and in
+# the transcript of whatever tool ran it; a key in a 0600 file is typed once, by you, and
+# read by nothing else:
+#
+#   mkdir -p ~/.config/silicon-optimizer && chmod 700 ~/.config/silicon-optimizer
+#   read -rs KEY && printf '%s' "$KEY" > ~/.config/silicon-optimizer/gmi.key && unset KEY
+#   chmod 600 ~/.config/silicon-optimizer/gmi.key
+#
+# `read -rs` does not echo what you type and does not enter history. Name the file after the
+# provider: nvidia.key, open-router.key, gmi.key. Environment variables still work and take
+# precedence — NVIDIA_API_KEY, OPENROUTER_API_KEY, GMI_API_KEY.
+#
+#   Keys: build.nvidia.com/settings/api-keys · openrouter.ai/keys · console.gmicloud.ai/apikeys
 #
 #   Scripts/verify-cloud.sh              # chat everywhere, plus GMI speech
 #   Scripts/verify-cloud.sh --music      # …and a song, which takes 30–60s
@@ -33,6 +43,16 @@ section() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 
 # Pulls a value out of a JSON body without shelling a key into an argument list.
 jqp() { python3 -c "$1" 2>/dev/null; }
+
+# The environment wins; otherwise ~/.config/silicon-optimizer/<slug>.key if it is there.
+# Trailing newlines are stripped, because an editor will add one and a bearer with a newline
+# in it fails in a way that reads like a wrong key.
+key_for() {               # env-var-name, slug
+  local from_env="${!1:-}"
+  if [[ -n "$from_env" ]]; then printf '%s' "$from_env"; return; fi
+  local file="${HOME}/.config/silicon-optimizer/${2}.key"
+  [[ -r "$file" ]] && tr -d '\r\n' < "$file"
+}
 
 # --- chat ---------------------------------------------------------------------------------
 #
@@ -101,7 +121,7 @@ verify_audio() {          # label, model, payload-json
 import json
 print(json.dumps({'model': '${model}', 'payload': json.loads('''${payload}''')}))")
   submitted=$(curl -s --max-time 60 -X POST "$queue" \
-    -H "Authorization: Bearer ${GMI_API_KEY}" -H 'Content-Type: application/json' -d "$body")
+    -H "Authorization: Bearer ${GMI_KEY}" -H 'Content-Type: application/json' -d "$body")
 
   request_id=$(printf '%s' "$submitted" | jqp 'import json,sys; print(json.load(sys.stdin).get("request_id",""))')
   if [[ -z "$request_id" ]]; then
@@ -114,7 +134,7 @@ print(json.dumps({'model': '${model}', 'payload': json.loads('''${payload}''')})
   # Terminal states are success / failed / cancelled — poll on anything else.
   local waited=0 status='' out=''
   while (( waited < 300 )); do
-    out=$(curl -s --max-time 30 -H "Authorization: Bearer ${GMI_API_KEY}" "${queue}/${request_id}")
+    out=$(curl -s --max-time 30 -H "Authorization: Bearer ${GMI_KEY}" "${queue}/${request_id}")
     status=$(printf '%s' "$out" | jqp 'import json,sys; print(json.load(sys.stdin).get("status","").lower())')
     case "$status" in
       success|succeeded|failed|error|cancelled|canceled) break ;;
@@ -151,23 +171,27 @@ print(found[0] if found else '')")
 
 # --- run ----------------------------------------------------------------------------------
 
+NVIDIA_KEY=$(key_for NVIDIA_API_KEY nvidia)
+OPENROUTER_KEY=$(key_for OPENROUTER_API_KEY open-router)
+GMI_KEY=$(key_for GMI_API_KEY gmi)
+
 section 'NVIDIA'
-if [[ -n "${NVIDIA_API_KEY:-}" ]]; then
-  verify_chat 'NVIDIA' 'https://integrate.api.nvidia.com/v1' "$NVIDIA_API_KEY" 'nemotron'
+if [[ -n "$NVIDIA_KEY" ]]; then
+  verify_chat 'NVIDIA' 'https://integrate.api.nvidia.com/v1' "$NVIDIA_KEY" 'nemotron'
 else
-  none 'NVIDIA_API_KEY not set'
+  none 'no NVIDIA key (env NVIDIA_API_KEY or ~/.config/silicon-optimizer/nvidia.key)'
 fi
 
 section 'OpenRouter'
-if [[ -n "${OPENROUTER_API_KEY:-}" ]]; then
-  verify_chat 'OpenRouter' 'https://openrouter.ai/api/v1' "$OPENROUTER_API_KEY" 'minimax'
+if [[ -n "$OPENROUTER_KEY" ]]; then
+  verify_chat 'OpenRouter' 'https://openrouter.ai/api/v1' "$OPENROUTER_KEY" 'minimax'
 else
-  none 'OPENROUTER_API_KEY not set'
+  none 'no OpenRouter key (env OPENROUTER_API_KEY or ~/.config/silicon-optimizer/open-router.key)'
 fi
 
 section 'GMI Cloud'
-if [[ -n "${GMI_API_KEY:-}" ]]; then
-  verify_chat 'GMI Cloud' 'https://api.gmi-serving.com/v1' "$GMI_API_KEY" 'minimax'
+if [[ -n "$GMI_KEY" ]]; then
+  verify_chat 'GMI Cloud' 'https://api.gmi-serving.com/v1' "$GMI_KEY" 'minimax'
 
   verify_audio 'speech' 'minimax-tts-speech-2.6-turbo' \
     '{"text": "The wire contract holds.", "voice_id": "English_expressive_narrator", "format": "mp3", "speed": "1"}'
@@ -179,7 +203,7 @@ if [[ -n "${GMI_API_KEY:-}" ]]; then
     none 'music (pass --music; it takes 30-60s)'
   fi
 else
-  none 'GMI_API_KEY not set'
+  none 'no GMI key (env GMI_API_KEY or ~/.config/silicon-optimizer/gmi.key)'
 fi
 
 printf '\n\033[1m%d passed, %d failed, %d skipped\033[0m\n' "$pass" "$fail" "$skip"
