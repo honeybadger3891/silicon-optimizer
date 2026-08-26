@@ -38,6 +38,7 @@ public struct MainWindow: View {
             case .audio: VoiceView()
             case .video: VideoView()
             case .swarm: SwarmView()
+            case .cloud: CloudView()
             case .settings: SettingsView()
             }
         }

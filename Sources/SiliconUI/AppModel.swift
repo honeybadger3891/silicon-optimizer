@@ -218,6 +218,7 @@ public final class AppModel {
         case audio = "Audio"
         case video = "Video"
         case swarm = "Swarm"
+        case cloud = "Cloud"
         case settings = "Settings"
 
         public var id: String { rawValue }
@@ -232,6 +233,7 @@ public final class AppModel {
             case .audio: "waveform"
             case .video: "film"
             case .swarm: "point.3.connected.trianglepath.dotted"
+            case .cloud: "cloud"
             case .settings: "gearshape"
             }
         }
