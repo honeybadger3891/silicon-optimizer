@@ -507,6 +507,8 @@ struct SettingsView: View {
                 }
             }
 
+            CloudProvidersSection()
+
             if model.settings.showAdvancedControls {
                 Section("Advanced") {
                     LabeledContent("llama-server path") {

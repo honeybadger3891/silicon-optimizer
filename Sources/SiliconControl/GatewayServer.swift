@@ -6,10 +6,15 @@ import Network
 public struct GatewayReadyBackend: Sendable {
     public var baseURL: URL
     public var backendModel: String
+    /// Set only for a remote provider. Local engines and swarm nodes on the tailnet need no
+    /// credential, so this stays nil for them and no `Authorization` header is sent at all —
+    /// an empty bearer is not the same as no bearer to every server that has ever seen one.
+    public var bearerToken: String?
 
-    public init(baseURL: URL, backendModel: String) {
+    public init(baseURL: URL, backendModel: String, bearerToken: String? = nil) {
         self.baseURL = baseURL
         self.backendModel = backendModel
+        self.bearerToken = bearerToken
     }
 }
 
@@ -166,7 +171,8 @@ public actor GatewayServer {
                 )
                 body = GatewayAPI.normalizingThinking(inBody: body, forNode: isNode)
                 let (status, data) = try await BackendClient.send(
-                    path: "chat/completions", body: body, to: backend.baseURL
+                    path: "chat/completions", body: body, to: backend.baseURL,
+                    bearer: backend.bearerToken
                 )
                 let warning = status == 200
                     ? GatewayAPI.emptyContentWarning(inResponseBody: data) : nil
@@ -220,7 +226,8 @@ public actor GatewayServer {
         let audit = GatewayStreamAudit()
         do {
             let frames = try await BackendClient.streamFrames(
-                path: "chat/completions", body: body, to: backend.baseURL
+                path: "chat/completions", body: body, to: backend.baseURL,
+                bearer: backend.bearerToken
             )
             for try await frame in frames {
                 if !sawDone, GatewayAPI.frameCarriesDone(frame) { sawDone = true }
@@ -327,7 +334,8 @@ public actor GatewayServer {
             chatBody = GatewayAPI.normalizingThinking(inBody: chatBody, forNode: isNode)
 
             let frames = try await BackendClient.streamFrames(
-                path: "chat/completions", body: chatBody, to: backend.baseURL
+                path: "chat/completions", body: chatBody, to: backend.baseURL,
+                bearer: backend.bearerToken
             )
             var sawPayload = false
             for try await frame in frames {
@@ -556,11 +564,16 @@ enum BackendClient {
         return URLSession(configuration: configuration)
     }
 
-    static func request(path: String, body: Data, base: URL) -> URLRequest {
+    static func request(
+        path: String, body: Data, base: URL, bearer: String? = nil
+    ) -> URLRequest {
         var request = URLRequest(url: base.appendingPathComponent(path))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        if let bearer, !bearer.isEmpty {
+            request.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization")
+        }
         // Uncompressed, explicitly. URLSession's default advertises gzip, and the tailnet
         // proxy in front of a node kills a compressed SSE stream about five seconds into
         // the first quiet prefill — observed as headers, one chunk, then EOF. curl with
@@ -571,9 +584,11 @@ enum BackendClient {
     }
 
     /// One buffered request, for non-streaming callers.
-    static func send(path: String, body: Data, to base: URL) async throws -> (Int, Data) {
+    static func send(
+        path: String, body: Data, to base: URL, bearer: String? = nil
+    ) async throws -> (Int, Data) {
         let (data, response) = try await session().data(
-            for: request(path: path, body: body, base: base)
+            for: request(path: path, body: body, base: base, bearer: bearer)
         )
         let status = (response as? HTTPURLResponse)?.statusCode ?? 502
         return (status, data)
@@ -593,11 +608,11 @@ enum BackendClient {
     /// Streams a backend SSE response as whole frames (without their trailing blank line).
     /// A non-200 answer is read in full and thrown as an error with the server's own words.
     static func streamFrames(
-        path: String, body: Data, to base: URL
+        path: String, body: Data, to base: URL, bearer: String? = nil
     ) async throws -> AsyncThrowingStream<Data, any Error> {
         let session = session()
         let (bytes, response) = try await session.bytes(
-            for: request(path: path, body: body, base: base)
+            for: request(path: path, body: body, base: base, bearer: bearer)
         )
         let status = (response as? HTTPURLResponse)?.statusCode ?? 502
         guard status == 200 else {

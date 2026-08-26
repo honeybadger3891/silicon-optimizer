@@ -42,6 +42,10 @@ public enum GatewayAPI {
     public enum ParsedModelID: Sendable, Equatable {
         case local(installID: String)
         case node(peerSlug: String, model: String)
+        /// A bring-your-own-key remote provider. Model names here carry slashes for the same
+        /// reason node ones do — "MiniMaxAI/MiniMax-M2.7", "minimax/minimax-m3" — so the
+        /// two-separator rule above is what makes this id parseable at all.
+        case cloud(provider: String, model: String)
     }
 
     /// One model, two spellings: nodes list the file ("qwen3_8_27b.ninfer") but serve the
@@ -72,6 +76,14 @@ public enum GatewayAPI {
             let model = String(rest[rest.index(after: separator)...])
             guard !slug.isEmpty, !model.isEmpty else { return nil }
             return .node(peerSlug: slug, model: model)
+        }
+        if id.hasPrefix("cloud/") {
+            let rest = id.dropFirst("cloud/".count)
+            guard let separator = rest.firstIndex(of: "/") else { return nil }
+            let provider = String(rest[..<separator])
+            let model = String(rest[rest.index(after: separator)...])
+            guard !provider.isEmpty, !model.isEmpty else { return nil }
+            return .cloud(provider: provider, model: model)
         }
         return nil
     }

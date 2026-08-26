@@ -112,6 +112,20 @@ public struct Settings: Codable, Sendable, Equatable {
     /// still startable from Models, but absent from the gateway and every engine picker.
     public var hiddenGatewayModels: [String]?
 
+    /// Gateway ids of the remote models the user has switched *on*. An allow-list, not a
+    /// hide-list: OpenRouter alone offers hundreds of models, and a picker that listed them
+    /// all next to three local ones would bury the point of this app. Nil or empty means no
+    /// cloud model appears anywhere, which is also what an unconfigured machine sees.
+    public var enabledCloudModels: [String]?
+
+    /// Remote *audio* model ids typed in by hand, one per line.
+    ///
+    /// The audio queue has no `/models` endpoint to ask, so its catalogue has to be written
+    /// down — and a written-down list is out of date the moment a provider ships something.
+    /// This is the escape hatch: GMI announced "Speech 2.8" while its own docs still said
+    /// 2.6, and without this there would be no way to reach it.
+    public var customCloudAudioModels: [String]?
+
     /// The gateway model id the Pi chat last used.
     public var piModel: String?
     /// Where image renders run: "auto" (strongest machine offering images — a capable
@@ -423,6 +437,12 @@ public struct Settings: Codable, Sendable, Equatable {
         )
         hiddenGatewayModels = try? container.decodeIfPresent(
             [String].self, forKey: .hiddenGatewayModels
+        )
+        enabledCloudModels = try? container.decodeIfPresent(
+            [String].self, forKey: .enabledCloudModels
+        )
+        customCloudAudioModels = try? container.decodeIfPresent(
+            [String].self, forKey: .customCloudAudioModels
         )
         piModel = try? container.decodeIfPresent(String.self, forKey: .piModel)
         imageRenderLocation = try? container.decodeIfPresent(

@@ -97,7 +97,7 @@ struct VoiceView: View {
         return Card(title: "Speak", systemImage: "waveform") {
             VStack(alignment: .leading, spacing: 12) {
                 Picker("Model", selection: $model.selectedVoiceModel) {
-                    ForEach(VoiceCatalog.speakers) { entry in
+                    ForEach(model.availableSpeakers) { entry in
                         Text(entry.name).tag(entry.id)
                     }
                 }
@@ -267,15 +267,27 @@ struct VoiceView: View {
 
     private var musicCard: some View {
         @Bindable var model = model
-        let entry = VoiceCatalog.minimaxMusic
+        let musicians = model.availableMusicians
+        let entry = model.voiceEntry(id: model.selectedMusicModel)
+            ?? VoiceCatalog.minimaxMusic
         return Card(title: "Music", systemImage: "music.note") {
             VStack(alignment: .leading, spacing: 12) {
+                if musicians.count > 1 {
+                    Picker("Model", selection: $model.selectedMusicModel) {
+                        ForEach(musicians) { option in
+                            Text(option.name).tag(option.id)
+                        }
+                    }
+                }
+
                 Text(entry.summary)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                installRow(for: entry)
+                // A remote model has nothing to install, and an install row for it would be
+                // a control that can never do anything.
+                if entry.backend != .cloud { installRow(for: entry) }
 
                 TextField(
                     "Style",

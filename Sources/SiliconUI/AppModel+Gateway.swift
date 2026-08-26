@@ -87,6 +87,11 @@ extension AppModel: GatewayHost {
                 }) {
                     models[index].queueDepth = peer.queueDepth
                 }
+            case .cloud:
+                // No dialect claimed: this app has measured llama.cpp's and the node's,
+                // and has measured no provider's. An unverified entry here would read as
+                // fact to every caller that trusts this list.
+                break
             case nil:
                 break
             }
@@ -149,6 +154,10 @@ extension AppModel: GatewayHost {
                 ))
             }
         }
+
+        // Remote models come last, deliberately: this app is about the hardware in front of
+        // you, and the list should read that way even for someone who has opted in.
+        models += enabledCloudGatewayModels().filter { !hidden.contains($0.id) }
         return models
     }
 
@@ -164,6 +173,10 @@ extension AppModel: GatewayHost {
             return try await ensureLocalReady(installID: installID, onStage: onStage)
         case .node(let peerSlug, let model):
             return try await ensureNodeReady(peerSlug: peerSlug, model: model, onStage: onStage)
+        case .cloud(let provider, let model):
+            // Nothing to start and nothing to wait for — the model is already up on someone
+            // else's hardware, which is the entire trade being made by using one.
+            return try cloudBackend(provider: provider, model: model)
         }
     }
 

@@ -11,6 +11,10 @@ public enum VoiceBackend: String, Sendable, Codable {
     case mlxSpeech
     /// LuxTTS, cloned beside the managed environment and driven through a small script.
     case luxTTS
+    /// A remote provider's audio queue — submit, poll, download. Nothing is installed and
+    /// nothing is loaded, so the weight and memory figures on these entries are zero and
+    /// mean it: a model running on someone else's hardware costs this Mac no memory.
+    case cloud
     /// In the catalog for the roadmap; no runner wired yet.
     case unsupported
 }
@@ -88,6 +92,57 @@ public enum VoiceCatalog {
 
     public static func entry(id: String) -> VoiceEntry? {
         all.first { $0.id == id }
+    }
+
+    /// Remote audio models as catalogue entries, so the Voice tab's pickers can list them
+    /// beside the local ones without knowing anything about providers.
+    ///
+    /// Only ever called with a provider whose key is present — an entry here is a promise
+    /// that picking it will do something.
+    public static func cloudEntries(
+        for provider: CloudProvider, kind: VoiceKind
+    ) -> [VoiceEntry] {
+        let wanted: CloudAudioKind? = switch kind {
+        case .speak: .speech
+        case .music: .music
+        case .transcribe, .soundEffect: nil
+        }
+        guard let wanted else { return [] }
+
+        return CloudAudioCatalog.entries(for: provider, kind: wanted).map { entry in
+            VoiceEntry(
+                id: cloudEntryID(provider: provider, model: entry.id),
+                name: entry.displayName,
+                author: "MiniMax",
+                license: "Provider terms",
+                summary: "Runs on \(provider.displayName), not on this Mac. Needs your key "
+                    + "and an internet connection; uses none of your memory.",
+                backend: .cloud,
+                kind: kind,
+                repo: "",
+                weightsSize: .zero,
+                peakMemory: .zero,
+                typicalDuration: wanted == .music ? "30–60 s" : "seconds",
+                rating: 4
+            )
+        }
+    }
+
+    /// `cloud/<provider>/<model>`, the same shape a gateway model id uses, so one glance at
+    /// an id says where the work happens.
+    public static func cloudEntryID(provider: CloudProvider, model: String) -> String {
+        "cloud/\(provider.rawValue)/\(model)"
+    }
+
+    /// Splits an id made by `cloudEntryID`. Nil for every local entry.
+    public static func parseCloudEntryID(_ id: String) -> (CloudProvider, String)? {
+        guard id.hasPrefix("cloud/") else { return nil }
+        let rest = id.dropFirst("cloud/".count)
+        guard let separator = rest.firstIndex(of: "/") else { return nil }
+        let provider = CloudProvider(rawValue: String(rest[..<separator]))
+        let model = String(rest[rest.index(after: separator)...])
+        guard let provider, !model.isEmpty else { return nil }
+        return (provider, model)
     }
 
     /// LuxTTS — the cloning pick. ZipVoice-based, runs on MPS, and generates far faster

@@ -115,6 +115,19 @@ public final class AppModel {
     /// Gateway-triggered local loads run one at a time through here.
     var gatewayEnsureTask: Task<Void, Never>?
 
+    // MARK: - Cloud providers
+
+    /// Bring-your-own-key remote providers. Loaded from its own file, never from settings:
+    /// empty means the cloud does not exist as far as the rest of the app is concerned.
+    public internal(set) var cloudCredentials: CloudCredentials = CloudCredentials.load()
+    /// What each configured key can actually reach, asked of the provider rather than
+    /// compiled in. Empty until the first refresh answers.
+    public internal(set) var cloudModels: [CloudModel] = []
+    /// Set while a refresh is in flight, so the settings pane can say so.
+    public internal(set) var cloudRefreshing = false
+    /// The last refresh failure, in the provider's own words, or nil.
+    public internal(set) var cloudRefreshError: String?
+
     // MARK: - Qwen Code chat
 
     /// State of the Qwen Code sidecar behind the Chat tab's Qwen engine.
@@ -1922,8 +1935,29 @@ public final class AppModel {
     public var voiceReferenceText = ""
 
     let voiceRuntime = VoiceRuntime()
+    /// Its remote counterpart, used only for entries whose backend is `.cloud`.
+    let cloudAudioRuntime = CloudAudioRuntime()
+    /// Which model the Music card composes with — local by default, and only ever a remote
+    /// one if someone picked it.
+    public var selectedMusicModel = VoiceCatalog.minimaxMusic.id
     public private(set) var isSpeaking = false
     public private(set) var voiceStage: String?
+
+    /// `isSpeaking` and `voiceStage` are `private(set)`, which in Swift means this file and
+    /// no other. The remote audio path lives in AppModel+Cloud, so it drives them through
+    /// these three seams rather than the properties being opened up to everything.
+    func setVoiceStage(_ stage: String?) { voiceStage = stage }
+
+    func beginVoiceJob(stage: String) {
+        isSpeaking = true
+        voiceStage = stage
+        voiceError = nil
+    }
+
+    func endVoiceJob() {
+        isSpeaking = false
+        voiceStage = nil
+    }
     public internal(set) var speechResults: [SpeechResult] = []
     public private(set) var isTranscribing = false
     public private(set) var transcriptions: [TranscriptionResult] = []
@@ -1936,7 +1970,11 @@ public final class AppModel {
     public func speak() {
         let text = voiceText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isSpeaking,
-              let entry = VoiceCatalog.entry(id: selectedVoiceModel) else { return }
+              let entry = voiceEntry(id: selectedVoiceModel) else { return }
+        if entry.backend == .cloud {
+            speakOnProvider(entry: entry, text: text)
+            return
+        }
         isSpeaking = true
         voiceStage = "Starting"
         voiceError = nil
@@ -2006,6 +2044,10 @@ public final class AppModel {
     public func composeMusic() {
         let caption = musicCaption.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !caption.isEmpty else { return }
+        if let entry = voiceEntry(id: selectedMusicModel), entry.backend == .cloud {
+            composeOnProvider(entry: entry, caption: caption)
+            return
+        }
         runAudioJob(SpeechRequest(
             entryID: VoiceCatalog.minimaxMusic.id,
             text: caption,

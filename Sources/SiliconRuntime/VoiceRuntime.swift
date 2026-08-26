@@ -172,6 +172,10 @@ public actor VoiceRuntime {
                 )
             }
             return VoiceInstallation(missing: .nothing, detail: "Ready.")
+        case .cloud:
+            // There is nothing to install. Whether it *works* depends on a key and a network,
+            // and both are reported where they can actually be fixed rather than here.
+            return VoiceInstallation(missing: .nothing, detail: "Runs on your provider.")
         case .unsupported:
             return VoiceInstallation(
                 missing: .unsupported, detail: "No runner is wired up for this one yet."
@@ -240,6 +244,14 @@ public actor VoiceRuntime {
                 script.path, Self.luxTTSClone.path, reference.path, request.text,
                 scratch.appendingPathComponent("speech.wav").path,
             ]
+        case .cloud:
+            // Loud on purpose. A remote model is routed to CloudAudioRuntime long before it
+            // reaches here, so arriving at this line means the routing broke — and a silent
+            // no-op would look like a model that simply never answers.
+            throw VoiceRuntimeError.failed(
+                "\(entry.name) runs on a provider, not on this Mac, and should not have been "
+                + "sent to the local runner. This is a bug — please report it."
+            )
         case .unsupported:
             throw VoiceRuntimeError.notInstalled("No runner is wired up for this one yet.")
         }

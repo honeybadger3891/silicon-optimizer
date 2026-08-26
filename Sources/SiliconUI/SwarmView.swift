@@ -1,5 +1,6 @@
 import AppKit
 import SiliconControl
+import SiliconCore
 import SwiftUI
 
 /// The Swarm tab: the command center for every machine in the swarm.
@@ -926,6 +927,9 @@ struct SwarmView: View {
             return "asked \(tail) on this Mac"
         case .node(let slug, let name):
             return "asked \(name) on \(slug)"
+        case .cloud(let provider, let name):
+            let label = CloudProvider(rawValue: provider)?.displayName ?? provider
+            return "asked \(name) on \(label)"
         case nil:
             return entry.modelID
         }
