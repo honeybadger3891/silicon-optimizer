@@ -55,8 +55,8 @@ extension AppModel {
     /// The model the next turn will use.
     public var codexSelectedModel: String {
         settings.codexModel
-            ?? gatewayModelSnapshot().first(where: \.serving)?.id
-            ?? gatewayModelSnapshot().first?.id
+            ?? autoSelectableGatewayModels().first(where: \.serving)?.id
+            ?? autoSelectableGatewayModels().first?.id
             ?? ""
     }
 

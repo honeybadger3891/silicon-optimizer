@@ -46,8 +46,8 @@ extension AppModel {
         let workspace = PiRuntime.workspaceDirectory
         let gatewayPort = gatewayPort()
         let defaultModel = settings.piModel
-            ?? gatewayModelSnapshot().first(where: \.serving)?.id
-            ?? gatewayModelSnapshot().first?.id
+            ?? autoSelectableGatewayModels().first(where: \.serving)?.id
+            ?? autoSelectableGatewayModels().first?.id
         do {
             try PiRuntime.ensureConfigured(
                 workspace: workspace,

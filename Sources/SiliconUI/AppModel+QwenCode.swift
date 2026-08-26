@@ -46,8 +46,9 @@ extension AppModel {
         let models = snapshot.map {
             QwenCodeRuntime.ModelEntry(id: $0.id, name: $0.displayName)
         }
-        let defaultModel = snapshot.first(where: \.serving)?.id
-            ?? snapshot.first?.id ?? "local/none"
+        let autoSelectable = autoSelectableGatewayModels()
+        let defaultModel = autoSelectable.first(where: \.serving)?.id
+            ?? autoSelectable.first?.id ?? "local/none"
         let nodePath = settings.nodeBinaryPath ?? ""
         Task {
             await runtime.start(

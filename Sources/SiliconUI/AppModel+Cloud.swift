@@ -161,6 +161,18 @@ extension AppModel {
             }
     }
 
+    /// The models an *automatic* choice may pick from — everything except remote ones.
+    ///
+    /// Remote models are listed as `serving: true`, because they are: there is nothing to
+    /// load. That truth had a sharp edge. Codex, Pi and Qwen Code each pick a default with
+    /// `first(where: \.serving)`, so on a Mac with nothing loaded the first model that
+    /// looked ready was a remote one, and an agent would have started billing someone who
+    /// had only ticked the box to make it *available*. Opting in to reachable is not opting
+    /// in to chosen-for-you; an explicit pick still routes anywhere.
+    func autoSelectableGatewayModels() -> [GatewayAPI.Model] {
+        gatewayModelSnapshot().filter { !$0.id.hasPrefix("cloud/") }
+    }
+
     /// Routing for a `cloud/…` id. There is no load and no wait — the work is on someone
     /// else's hardware — so this is a lookup that either finds a key or explains why not.
     func cloudBackend(provider rawProvider: String, model: String) throws -> GatewayReadyBackend {

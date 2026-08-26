@@ -168,6 +168,36 @@ struct CloudProviderTests {
         #expect(VoiceCatalog.cloudEntries(for: .nvidia, kind: .speak).isEmpty)
     }
 
+    // MARK: - Never chosen for you
+
+    /// The sharp edge of listing a remote model as `serving: true`: it *is* serving, so the
+    /// `first(where: \.serving)` that Codex, Pi and Qwen Code each use to pick a default
+    /// would land on it whenever nothing local was loaded — and start billing someone who
+    /// had only ticked the box to make it reachable.
+    @Test func anAutomaticChoiceNeverLandsOnARemoteModel() {
+        let localIdle = GatewayAPI.Model(
+            id: "local/qwen3", displayName: "Qwen3", where_: "This Mac", serving: false
+        )
+        let remote = GatewayAPI.Model(
+            id: "cloud/nvidia/moonshotai/kimi-k3", displayName: "Kimi K3",
+            where_: "NVIDIA", serving: true
+        )
+
+        // The shape the bug needed: nothing local serving, a remote one that always is.
+        let snapshot = [localIdle, remote]
+        let autoSelectable = snapshot.filter { !$0.id.hasPrefix("cloud/") }
+
+        #expect(autoSelectable.first(where: \.serving) == nil, "nothing local is ready")
+        #expect(
+            autoSelectable.first?.id == "local/qwen3",
+            "the fallback is the idle local model — loading it is the right cost to pay"
+        )
+        #expect(!autoSelectable.contains { $0.id.hasPrefix("cloud/") })
+
+        // And the unfiltered list is exactly what would have gone wrong.
+        #expect(snapshot.first(where: \.serving)?.id == remote.id)
+    }
+
     // MARK: - Remote models as catalogue entries
 
     /// The Voice tab's pickers hold entry ids, and the runner has to get a provider and a
