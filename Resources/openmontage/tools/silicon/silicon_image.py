@@ -29,8 +29,10 @@ class SiliconImage(BaseTool):
     stability = ToolStability.BETA
     execution_mode = ExecutionMode.SYNC
     determinism = Determinism.SEEDED
-    # This Mac's own GPU, through the app. No network, no key, no bill.
-    runtime = ToolRuntime.LOCAL
+    # This Mac's GPU, or a paired node's — the app decides per render, and a node with
+    # a bigger card wins when it is up. Either way: no key, no bill, nothing leaves your
+    # network. HYBRID is the closest of OpenMontage's four words for that.
+    runtime = ToolRuntime.HYBRID
 
     dependencies: list[str] = []
     install_instructions = (
@@ -85,7 +87,9 @@ class SiliconImage(BaseTool):
         return 0.0
 
     def estimate_runtime(self, inputs: dict[str, Any]) -> float:
-        return 30.0
+        # Seconds on this Mac; minutes when the app routes to a node that is busy or has
+        # to load the model first. The app's Images tab shows the same progress.
+        return 60.0
 
     @staticmethod
     def request_body(inputs: dict[str, Any]) -> dict[str, Any]:
