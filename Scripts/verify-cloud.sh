@@ -7,19 +7,17 @@
 # needs credentials, which is exactly why it exists as a script you run rather than a test
 # that silently never runs.
 #
-# Keys are never printed, and only ever read — from a file, or from the environment.
+# Keys are never printed, and only ever read. Easiest first:
 #
-# The file is the better habit. A key on a command line lands in your shell history, and in
-# the transcript of whatever tool ran it; a key in a 0600 file is typed once, by you, and
-# read by nothing else:
+#   cp .env.example .env      # then paste your keys into it
+#   Scripts/verify-cloud.sh
 #
-#   mkdir -p ~/.config/silicon-optimizer && chmod 700 ~/.config/silicon-optimizer
-#   read -rs KEY && printf '%s' "$KEY" > ~/.config/silicon-optimizer/gmi.key && unset KEY
-#   chmod 600 ~/.config/silicon-optimizer/gmi.key
+# .env is gitignored. Putting a key there beats putting it on a command line, which lands it
+# in your shell history and in the transcript of whatever tool ran the command.
 #
-# `read -rs` does not echo what you type and does not enter history. Name the file after the
-# provider: nvidia.key, open-router.key, gmi.key. Environment variables still work and take
-# precedence — NVIDIA_API_KEY, OPENROUTER_API_KEY, GMI_API_KEY.
+# Three sources, in order: the environment, then .env at the repo root, then
+# ~/.config/silicon-optimizer/<slug>.key — nvidia.key, open-router.key, gmi.key. The first
+# one that has a value wins.
 #
 #   Keys: build.nvidia.com/settings/api-keys · openrouter.ai/keys · console.gmicloud.ai/apikeys
 #
@@ -44,13 +42,38 @@ section() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 # Pulls a value out of a JSON body without shelling a key into an argument list.
 jqp() { python3 -c "$1" 2>/dev/null; }
 
-# The environment wins; otherwise ~/.config/silicon-optimizer/<slug>.key if it is there.
-# Trailing newlines are stripped, because an editor will add one and a bearer with a newline
-# in it fails in a way that reads like a wrong key.
+# .env, read rather than sourced. Sourcing would execute it, and a file whose whole job is to
+# hold pasted secrets is the last thing to hand to the shell — one stray backtick in a pasted
+# key and it runs. This pulls out a single KEY=VALUE line and nothing else.
+#
+# No associative array: macOS ships bash 3.2, which has none.
+ENV_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/.env"
+
+dotenv_get() {            # var-name
+  [[ -r "$ENV_FILE" ]] || return 0
+  # A leading # makes the line a comment and stops it matching at all. First value wins.
+  sed -n "s/^[[:space:]]*${1}[[:space:]]*=[[:space:]]*//p" "$ENV_FILE" \
+    | sed -e "s/^[\"']//" -e "s/[\"']$//" -e 's/[[:space:]]*$//' \
+    | grep -v '^$' | head -n 1
+}
+
+# The environment wins, then .env, then ~/.config/silicon-optimizer/<slug>.key.
 key_for() {               # env-var-name, slug
-  local from_env="${!1:-}"
-  if [[ -n "$from_env" ]]; then printf '%s' "$from_env"; return; fi
-  local file="${HOME}/.config/silicon-optimizer/${2}.key"
+  local var="$1" slug="$2" value=""
+
+  # Indirect expansion combined with a default is unreliable on bash 3.2, so the guard comes
+  # off for exactly one line rather than the expression getting clever.
+  set +u
+  value="${!var}"
+  set -u
+  if [[ -n "$value" ]]; then printf '%s' "$value"; return; fi
+
+  value="$(dotenv_get "$var")"
+  if [[ -n "$value" ]]; then printf '%s' "$value"; return; fi
+
+  local file="${HOME}/.config/silicon-optimizer/${slug}.key"
+  # tr strips the newline an editor adds; a bearer containing one fails in a way that reads
+  # exactly like a wrong key.
   [[ -r "$file" ]] && tr -d '\r\n' < "$file"
 }
 
@@ -179,14 +202,14 @@ section 'NVIDIA'
 if [[ -n "$NVIDIA_KEY" ]]; then
   verify_chat 'NVIDIA' 'https://integrate.api.nvidia.com/v1' "$NVIDIA_KEY" 'nemotron'
 else
-  none 'no NVIDIA key (env NVIDIA_API_KEY or ~/.config/silicon-optimizer/nvidia.key)'
+  none 'no NVIDIA key — set NVIDIA_API_KEY in .env'
 fi
 
 section 'OpenRouter'
 if [[ -n "$OPENROUTER_KEY" ]]; then
   verify_chat 'OpenRouter' 'https://openrouter.ai/api/v1' "$OPENROUTER_KEY" 'minimax'
 else
-  none 'no OpenRouter key (env OPENROUTER_API_KEY or ~/.config/silicon-optimizer/open-router.key)'
+  none 'no OpenRouter key — set OPENROUTER_API_KEY in .env'
 fi
 
 section 'GMI Cloud'
@@ -203,7 +226,7 @@ if [[ -n "$GMI_KEY" ]]; then
     none 'music (pass --music; it takes 30-60s)'
   fi
 else
-  none 'no GMI key (env GMI_API_KEY or ~/.config/silicon-optimizer/gmi.key)'
+  none 'no GMI key — set GMI_API_KEY in .env'
 fi
 
 printf '\n\033[1m%d passed, %d failed, %d skipped\033[0m\n' "$pass" "$fail" "$skip"

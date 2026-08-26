@@ -13,6 +13,11 @@ web/package-lock.json
 # Local scratch
 *.log
 
+# Credentials. .env holds real API keys for Scripts/verify-cloud.sh; .env.example is the
+# committed template and holds none. Ignore the former before ever creating it.
+.env
+*.key
+
 # Build artifacts and local scratch files
 *.profraw
 /pacman.html
