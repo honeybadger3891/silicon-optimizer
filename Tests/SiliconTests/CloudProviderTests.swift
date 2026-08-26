@@ -168,6 +168,41 @@ struct CloudProviderTests {
         #expect(VoiceCatalog.cloudEntries(for: .nvidia, kind: .speak).isEmpty)
     }
 
+    // MARK: - What a row prints
+
+    /// NVIDIA and GMI return ids with no display name, so `displayName` falls back to the id.
+    /// Printed naively that was ninety-five rows of the same string stacked on itself.
+    @Test func aRowWithNoNameFromTheProviderSplitsTheIDInstead() {
+        let nvidia = CloudModel(
+            id: "deepseek-ai/deepseek-v4-flash-0731",
+            displayName: "deepseek-ai/deepseek-v4-flash-0731",  // the parser's own fallback
+            provider: .nvidia
+        )
+        let labels = CloudView.labels(for: nvidia)
+        #expect(labels.title == "deepseek-v4-flash-0731")
+        #expect(labels.subtitle == "deepseek-ai")
+        #expect(labels.title != labels.subtitle)
+    }
+
+    /// OpenRouter does send names, and a real name beats anything derived from the id.
+    @Test func aRealNameIsPreferredOverTheID() {
+        let router = CloudModel(
+            id: "minimax/minimax-m3", displayName: "MiniMax: MiniMax M3",
+            provider: .openRouter, contextWindow: 1_048_576
+        )
+        let labels = CloudView.labels(for: router)
+        #expect(labels.title == "MiniMax: MiniMax M3")
+        #expect(labels.subtitle == "minimax/minimax-m3")
+    }
+
+    /// An id with no maker has nothing to split, and must not lose its name to an empty line.
+    @Test func anIDWithoutAMakerKeepsItsWholeName() {
+        let bare = CloudModel(id: "gpt-4o", displayName: "gpt-4o", provider: .nvidia)
+        let labels = CloudView.labels(for: bare)
+        #expect(labels.title == "gpt-4o")
+        #expect(labels.subtitle.isEmpty, "an empty subtitle takes no room in the row")
+    }
+
     // MARK: - Never chosen for you
 
     /// The sharp edge of listing a remote model as `serving: true`: it *is* serving, so the
