@@ -627,16 +627,16 @@ enum Tools {
     }
 
     enum ToolError: Error, LocalizedError {
+        case invalid(String)
         case missing(String)
         case unknown(String)
         case unreadableImage(String)
-        case invalid(String)
 
         var errorDescription: String? {
             switch self {
+            case .invalid(let message): message
             case .missing(let field): "Required argument '\(field)' was not provided."
             case .unknown(let name): "Unknown tool '\(name)'."
-            case .invalid(let message): message
             case .unreadableImage(let path):
                 "Could not read an image at '\(path)'. Give an absolute path to a PNG or JPEG."
             }

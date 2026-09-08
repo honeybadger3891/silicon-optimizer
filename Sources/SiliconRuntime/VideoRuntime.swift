@@ -97,24 +97,18 @@ public actor NodeVideoRuntime {
     public static let capabilityKind = "video"
 
     private var session: URLSession
-    private var videoSession: URLSession
-    private var downloadSession: URLSession
     private var cancelled = false
 
     public init(session: URLSession? = nil) {
-        self.session = session ?? .shared
-        self.videoSession = session ?? URLSession(configuration: Self.sessionConfiguration(
-            resourceSeconds: VideoGenerationBudget.nodeRequestSeconds
-        ))
-        self.downloadSession = session ?? URLSession(configuration: Self.sessionConfiguration(
-            resourceSeconds: VideoGenerationBudget.downloadSeconds
-        ))
+        self.session = session ?? URLSession(configuration: Self.sessionConfiguration())
     }
 
-    static func sessionConfiguration(resourceSeconds: Int) -> URLSessionConfiguration {
+    static func sessionConfiguration() -> URLSessionConfiguration {
         let configuration = URLSessionConfiguration.ephemeral
-        configuration.timeoutIntervalForRequest = TimeInterval(resourceSeconds)
-        configuration.timeoutIntervalForResource = TimeInterval(resourceSeconds)
+        // Per-request idle limits below are shorter for submit/status operations.
+        // A finite resource limit also bounds a server that keeps trickling bytes.
+        configuration.timeoutIntervalForRequest = TimeInterval(VideoGenerationBudget.networkResourceSeconds)
+        configuration.timeoutIntervalForResource = TimeInterval(VideoGenerationBudget.networkResourceSeconds)
         return configuration
     }
 
@@ -136,14 +130,12 @@ public actor NodeVideoRuntime {
         onProgress(.stage("Sending the job"))
         var submit = URLRequest(url: baseURL.appendingPathComponent("v1/text-to-video"))
         submit.httpMethod = "POST"
-        submit.timeoutInterval = TimeInterval(VideoGenerationBudget.nodeRequestSeconds)
+        submit.timeoutInterval = 120
         submit.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token { submit.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         submit.httpBody = try request.nodeBody()
 
-        let jobID = try await submitJob(
-            submit, nodeName: baseURL.host ?? "the node", using: videoSession
-        )
+        let jobID = try await submitJob(submit, nodeName: baseURL.host ?? "the node")
         Self.log.notice("video job \(jobID, privacy: .public) submitted to \(baseURL.absoluteString, privacy: .public)")
 
         // Includes time waiting behind other renders. Keep outer control/MCP timeouts
@@ -156,9 +148,9 @@ public actor NodeVideoRuntime {
             guard Date() < deadline else { break }
 
             var poll = URLRequest(url: baseURL.appendingPathComponent("v1/jobs/\(jobID)"))
-            poll.timeoutInterval = TimeInterval(VideoGenerationBudget.statusRequestSeconds)
+            poll.timeoutInterval = 30
             if let token { poll.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
-            guard let (data, _) = try? await videoSession.data(for: poll) else {
+            guard let (data, _) = try? await session.data(for: poll) else {
                 Self.log.notice("video job \(jobID, privacy: .public): poll failed, retrying")
                 continue
             }
@@ -265,12 +257,10 @@ public actor NodeVideoRuntime {
         throw VideoRuntimeError.failed("The job didn't finish in time.")
     }
 
-    private func submitJob(
-        _ request: URLRequest, nodeName: String, using operationSession: URLSession? = nil
-    ) async throws -> String {
+    private func submitJob(_ request: URLRequest, nodeName: String) async throws -> String {
         let (data, response): (Data, URLResponse)
         do {
-            (data, response) = try await (operationSession ?? session).data(for: request)
+            (data, response) = try await session.data(for: request)
         } catch {
             throw VideoRuntimeError.noNode("Could not reach \(nodeName).")
         }
@@ -323,9 +313,9 @@ public actor NodeVideoRuntime {
     private func download(_ remote: URL, token: String?, into directory: URL) async throws -> URL {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         var request = URLRequest(url: remote)
-        request.timeoutInterval = TimeInterval(VideoGenerationBudget.downloadSeconds)
+        request.timeoutInterval = 600
         if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
-        let (data, response) = try await downloadSession.data(for: request)
+        let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
               !data.isEmpty
         else {
