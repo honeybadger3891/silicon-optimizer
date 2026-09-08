@@ -308,7 +308,16 @@ enum Tools {
                 "prompt": property("string", "What happens in the clip."),
                 "model_id": property("string", "Optional: wan22-ti2v-5b (cinematic, ~10 min) "
                     + "or ltx2-distilled (fast, 1-3 min). Defaults to the app's selection."),
-                "seconds": property("number", "Clip length in seconds, 1-10. Default 5."),
+                "seconds": .object([
+                    "type": .string("number"),
+                    "description": .string(
+                        "Clip length in seconds, "
+                            + "\(ControlAPI.VideoGenerateRequest.minimumSeconds)-"
+                            + "\(ControlAPI.VideoGenerateRequest.maximumSeconds). Default 5."
+                    ),
+                    "minimum": .number(Double(ControlAPI.VideoGenerateRequest.minimumSeconds)),
+                    "maximum": .number(Double(ControlAPI.VideoGenerateRequest.maximumSeconds)),
+                ]),
                 "resolution": property("string", "e.g. 720p. Defaults to the app's setting."),
                 "image_path": property("string", "Optional still to animate (image-to-video): "
                     + "absolute path, e.g. something from generate_image."),
