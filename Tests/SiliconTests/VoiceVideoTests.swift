@@ -197,8 +197,10 @@ struct VideoTests {
     @Test func catalogEntriesAreRemoteAndHonest() {
         #expect(!VideoCatalog.all.isEmpty)
         #expect(VideoCatalog.all.allSatisfy { $0.backend == .nodeRemote })
-        #expect(VideoCatalog.all.allSatisfy { $0.capabilityID == "text-to-video" })
+        #expect(Set(VideoCatalog.all.map(\.capabilityID)).count == VideoCatalog.all.count)
+        #expect(VideoCatalog.all.allSatisfy { $0.capabilityID == $0.id })
         #expect(VideoCatalog.entry(id: "wan22-ti2v-5b")?.supportsImageInput == true)
+        #expect(VideoCatalog.entry(id: "hailuo-h3")?.author == "MiniMax")
     }
 
     /// The liberal artifact scan: any string ending in a video extension, however the
