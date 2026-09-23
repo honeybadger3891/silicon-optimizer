@@ -2194,6 +2194,9 @@ public actor ControlServer {
     private func resolvedMesh(
         _ request: ControlAPI.MeshRequest, as caller: Caller
     ) async throws -> ControlAPI.MeshRequest {
+        if request.imagePath != nil, !Self.mayNamePaths(caller) {
+            throw ControlAPI.MissingSubject()
+        }
         var copy = request
         if let resolved = await resolvedPath(
             uploadID: request.uploadID, mediaID: request.mediaID, as: caller
@@ -2206,8 +2209,7 @@ public actor ControlServer {
         if request.uploadID != nil || request.mediaID != nil {
             throw ControlAPI.UnreadableSubject()
         }
-        guard let path = request.imagePath, !path.isEmpty,
-              Self.mayNamePaths(caller) else {
+        guard let path = request.imagePath, !path.isEmpty else {
             throw ControlAPI.MissingSubject()
         }
         return copy
@@ -2216,6 +2218,9 @@ public actor ControlServer {
     private func resolvedImage(
         _ request: ControlAPI.ImageRequest, as caller: Caller
     ) async throws -> ControlAPI.ImageRequest {
+        if request.initImagePath != nil, !Self.mayNamePaths(caller) {
+            throw ControlAPI.MissingSubject()
+        }
         var copy = request
         if let resolved = await resolvedPath(
             uploadID: request.uploadID, mediaID: request.mediaID, as: caller
@@ -2227,16 +2232,16 @@ public actor ControlServer {
             throw ControlAPI.UnreadableSubject()
         }
         // Unlike a mesh, an image does not need a subject at all — text to image is the
-        // ordinary case. A device or swarm peer naming a path is refused.
-        if request.initImagePath != nil, !Self.mayNamePaths(caller) {
-            throw ControlAPI.MissingSubject()
-        }
+        // ordinary case. Raw paths were rejected before any ID could be resolved.
         return copy
     }
 
     private func resolvedVideo(
         _ request: ControlAPI.VideoGenerateRequest, as caller: Caller
     ) async throws -> ControlAPI.VideoGenerateRequest {
+        if request.imagePath != nil, !Self.mayNamePaths(caller) {
+            throw ControlAPI.MissingSubject()
+        }
         var copy = request
         if let resolved = await resolvedPath(
             uploadID: request.uploadID, mediaID: request.mediaID, as: caller
@@ -2246,9 +2251,6 @@ public actor ControlServer {
         }
         if request.uploadID != nil || request.mediaID != nil {
             throw ControlAPI.UnreadableSubject()
-        }
-        if request.imagePath != nil, !Self.mayNamePaths(caller) {
-            throw ControlAPI.MissingSubject()
         }
         return copy
     }
