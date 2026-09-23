@@ -3,6 +3,34 @@ import Testing
 import SiliconControl
 @testable import SiliconRuntime
 
+@Suite("Harness launch arguments")
+struct HarnessLaunchTests {
+    @Test(arguments: [nil, "/Users/Test User/dsh/silicon-overlay.patch.yml"] as [String?])
+    func embeddedChatSuppressesBrowserLaunch(overlayPath: String?) throws {
+        let entryPoint = URL(fileURLWithPath: "/tmp/verified harness/bin/cli.js")
+        let arguments = HarnessRuntime.launchArguments(
+            entryPoint: entryPoint, webPort: 9132, overlayPath: overlayPath
+        )
+
+        // Node launches the verified file directly; no package lookup runs in the workspace.
+        #expect(Array(arguments.prefix(3)) == [entryPoint.path, "--profile", "web"])
+        #expect(!arguments.contains("--yes"))
+        #expect(!arguments.contains(HarnessRuntime.packageSpec))
+        let portIndex = try #require(arguments.firstIndex(of: "--port"))
+        #expect(arguments[portIndex + 1] == "9132")
+        let noOpenIndex = try #require(arguments.firstIndex(of: "--no-open"))
+        #expect(noOpenIndex == arguments.count - 1)
+        #expect(noOpenIndex > portIndex)
+        if let overlayPath {
+            let patchIndex = try #require(arguments.firstIndex(of: "--patch"))
+            #expect(arguments[patchIndex + 1] == overlayPath)
+            #expect(patchIndex < portIndex)
+        } else {
+            #expect(!arguments.contains("--patch"))
+        }
+    }
+}
+
 @Suite("Harness provider configuration")
 struct HarnessConfigTests {
 

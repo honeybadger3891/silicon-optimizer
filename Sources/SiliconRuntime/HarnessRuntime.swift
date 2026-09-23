@@ -605,6 +605,17 @@ public actor HarnessRuntime {
 
     // MARK: - Lifecycle
 
+    static func launchArguments(entryPoint: URL, webPort: Int, overlayPath: String?) -> [String] {
+        // `--patch` is a launcher flag and must precede the web profile's arguments.
+        var arguments = [entryPoint.path, "--profile", "web"]
+        if let overlayPath {
+            arguments += ["--patch", overlayPath]
+        }
+        // The app embeds this UI; the harness must not also open the default browser.
+        arguments += ["--port", String(webPort), "--no-open"]
+        return arguments
+    }
+
     /// Starts the harness and reports progress through `onState`, ending in `.ready` with the
     /// web UI's URL or `.failed` with a diagnosis worth reading.
     ///
@@ -690,13 +701,10 @@ public actor HarnessRuntime {
         }
         installedPackage = installed
 
-        // The `--profile web` root form rather than the `web` subcommand: `--patch` is a
-        // launcher flag, and the launcher only accepts it ahead of profile arguments.
-        var arguments = [installed.bin.path, "--profile", "web"]
-        if let overlayPath {
-            arguments += ["--patch", overlayPath]
-        }
-        arguments += ["--port", String(webPort)]
+        let arguments = Self.launchArguments(
+            entryPoint: installed.bin, webPort: webPort, overlayPath: overlayPath
+        )
+
 
         let process = ServerProcess()
         self.process = process
