@@ -103,6 +103,23 @@ public final class AppModel {
     var pairingRequest: PendingPairing?
     var pairingDelivered = false
     var pairingPollTask: Task<Void, Never>?
+    enum PairingApprovalState: Equatable {
+        case idle
+        case minting(String)
+        case cancelling(String)
+        case committing(String)
+        case committed(String)
+    }
+    var pairingApprovalState: PairingApprovalState = .idle
+    var pairingApprovalTask: Task<Void, Never>?
+    var pairingStopTask: Task<Void, Never>?
+    var pairingApprovalAdmin: String?
+    struct PairingCleanupNeeded {
+        var clientName: String
+        var peers: [SwarmPeer]
+        var admin: String?
+    }
+    var pairingCleanupNeeded: PairingCleanupNeeded?
     /// The code shown on the joiner's screen while awaiting the owner's decision.
     var joinCode: String?
 
@@ -3359,7 +3376,7 @@ public final class AppModel {
     /// is retried.
     public func installPrismRuntime() {
         if let current = prismRuntimeInstall, current.error == nil { return }
-        prismRuntimeInstall = PrismRuntimeInstall(stage: "Finding the newest PrismML build")
+        prismRuntimeInstall = PrismRuntimeInstall(stage: "Preparing reviewed PrismML build")
         Task { [weak self] in
             do {
                 _ = try await PrismRuntime.install { progress in
@@ -3494,15 +3511,16 @@ public final class AppModel {
     /// - Parameter saveTo: A folder to save this model's files under instead of Silicon
     ///   Optimizer's own managed library directory — an external drive, say. The library's index
     ///   still lives where it always does; only these files move. Pass `nil` for the default.
-    /// For every file a resolution wants, a same-named file of the same size already in the
-    /// library is cloned into `destination` (an APFS clone: instant, no extra space). The
-    /// downloader then finds it present and valid and skips it. Best effort — a failed
-    /// clone just means a download.
+    /// For files with a published digest, a same-named, same-size library file is cloned
+    /// into `destination` (an APFS clone: instant, no extra space). The downloader hashes
+    /// the clone against the target digest before reuse. Files without a digest cannot be
+    /// proven identical, so they are fetched rather than cloned.
     func cloneIdenticalFiles(of resolution: ModelResolver.Resolution, into destination: URL) {
         var wanted = resolution.files
         if let projector = resolution.projector { wanted.append(projector) }
         let candidates = installedModels.flatMap { $0.allFiles + [$0.projectorFile].compactMap { $0 } }
         for file in wanted {
+            guard file.sha256 != nil else { continue }
             let name = (file.path as NSString).lastPathComponent
             let target = destination.appendingPathComponent(name)
             guard !FileManager.default.fileExists(atPath: target.path),
@@ -3562,6 +3580,7 @@ public final class AppModel {
                 // The projector is downloaded alongside the weights, so exclude it from the
                 // weights list the runtime is handed.
                 let weights = files.filter { $0 != projector }
+                try Task.checkCancellation()
                 _ = try await self.library.register(
                     entry: entry, quantization: quantization,
                     files: weights, projector: projector,

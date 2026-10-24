@@ -379,9 +379,9 @@ so an app can say "available until" rather than discover the 404 a week later.
 `POST /video/generate` then take `uploadID` or `mediaID` in place of a path, resolved on
 this side before the render sees the request. **Paired devices and swarm peers use these
 IDs**: `imagePath` and `initImagePath` require this Mac's per-launch control token, even
-when a swarm client connects over loopback. The planning routes apply the same rule as
-rendering. A shared swarm credential grants rendering access, not access to arbitrary
-files on the Mac.
+when a swarm client connects over loopback, and a request carrying both an ID and a path
+is refused. The planning routes apply the same rule as rendering. A shared swarm
+credential grants rendering access, not access to arbitrary files on the Mac.
 
 A swarm client can send its input to `POST /uploads`, then pass the returned `uploadID`
 or `mediaID` to the render route. Swarm uploads share a separate `swarm` bucket and cannot
@@ -1000,7 +1000,6 @@ nothing at all, so the previous calibration keeps working.
 > the run reports how *both* lanes did against those labels beside the agreement rate. High
 > agreement with two poor label scores is the shape to watch for. Treat the floors as a
 > measurement of one model against another on forty cases, which is what they are.
->>>>>>> be36c32 (Calibrate the local decision lane, and make `auto` a cascade)
 
 ### Model routing
 
